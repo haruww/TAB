@@ -1,6 +1,7 @@
 package me.neznamy.tab.shared;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -491,5 +492,10 @@ public class TAB extends TabAPI {
     @Override
     public void debug(String message) {
         if (configuration.isDebugMode()) platform.sendConsoleMessage("&9[TAB DEBUG] " + message, true);
+    }
+
+    @Override
+    public long getOnlinePlayerCount() {
+        return Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> !all.isVanished()).count();
     }
 }

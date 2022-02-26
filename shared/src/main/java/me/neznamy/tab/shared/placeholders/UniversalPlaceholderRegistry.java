@@ -53,7 +53,7 @@ public class UniversalPlaceholderRegistry implements PlaceholderRegistry {
         manager.registerServerPlaceholder("%memory-max%", -1, () -> ((int) (Runtime.getRuntime().maxMemory() / 1048576))).enableTriggerMode();
         manager.registerServerPlaceholder("%memory-used-gb%", 200, () -> decimal2.format((float)(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) /1024/1024/1024));
         manager.registerServerPlaceholder("%memory-max-gb%", -1, () -> decimal2.format((float)Runtime.getRuntime().maxMemory() /1024/1024/1024)).enableTriggerMode();
-        manager.registerServerPlaceholder("%online%", 1000, () -> Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> !all.isVanished()).count());
+        manager.registerServerPlaceholder("%online%", 1000, () -> TAB.getInstance().getOnlinePlayerCount()); // MultiPaper
         manager.registerServerPlaceholder("%staffonline%", 2000, () -> Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> all.hasPermission(TabConstants.Permission.STAFF) && !all.isVanished()).count());
         manager.registerServerPlaceholder("%nonstaffonline%", 2000, () -> Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> !all.hasPermission(TabConstants.Permission.STAFF) && !all.isVanished()).count());
         PermissionPlugin plugin = TAB.getInstance().getGroupManager().getPlugin();

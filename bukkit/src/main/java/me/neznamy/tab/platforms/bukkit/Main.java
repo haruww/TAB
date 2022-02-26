@@ -32,7 +32,12 @@ public class Main extends JavaPlugin {
         }
         BukkitPlatform platform = new BukkitPlatform(this);
         TAB.setInstance(new TAB(platform, ProtocolVersion.fromFriendlyName(Bukkit.getBukkitVersion().split("-")[0]),
-                Bukkit.getBukkitVersion().split("-")[0] + " (" + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ")", getDataFolder()));
+                Bukkit.getBukkitVersion().split("-")[0] + " (" + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ")", getDataFolder()) {
+            @Override
+            public long getOnlinePlayerCount() {
+                return Bukkit.getOnlinePlayers().size();
+            }
+        });
         if (TAB.getInstance().getServerVersion() == ProtocolVersion.UNKNOWN) {
             Bukkit.getConsoleSender().sendMessage(EnumChatFormat.color("&c[TAB] Unknown server version: " + Bukkit.getBukkitVersion() + "! Plugin may not work correctly."));
         }
