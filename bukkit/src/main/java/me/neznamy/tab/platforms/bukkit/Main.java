@@ -35,7 +35,11 @@ public class Main extends JavaPlugin {
                 Bukkit.getBukkitVersion().split("-")[0] + " (" + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ")", getDataFolder()) {
             @Override
             public long getOnlinePlayerCount() {
-                return Bukkit.getOnlinePlayers().size();
+                int count = 0;
+                for (World world : Bukkit.getWorlds()) {
+                    count += world.getPlayers().size();
+                }
+                return count;
             }
         });
         if (TAB.getInstance().getServerVersion() == ProtocolVersion.UNKNOWN) {
