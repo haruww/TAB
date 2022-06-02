@@ -43,7 +43,7 @@ public abstract class ProxyPlatform extends Platform {
     /**
      * Returns plugin message handler
      *
-     * @return    plugin message handler
+     * @return  plugin message handler
      */
     public PluginMessageHandler getPluginMessageHandler() {
         return plm;
@@ -52,7 +52,7 @@ public abstract class ProxyPlatform extends Platform {
     /**
      * Returns bridge placeholders, which are refreshed on backend server
      *
-     * @return    bridge placeholders, which are refreshed on backend server
+     * @return  bridge placeholders, which are refreshed on backend server
      */
     public Map<String, Integer> getBridgePlaceholders() {
         return bridgePlaceholders;
@@ -81,16 +81,18 @@ public abstract class ProxyPlatform extends Platform {
             return;
         }
         Placeholder placeholder;
+        int refresh;
         if (identifier.startsWith("%rel_")) {
-            placeholder = pl.registerRelationalPlaceholder(identifier, pl.getRelationalRefresh(identifier), (viewer, target) -> null);
+            placeholder = pl.registerRelationalPlaceholder(identifier, -1, (viewer, target) -> null);
+            refresh = pl.getRelationalRefresh(identifier);
         } else {
-            int refresh = pl.getPlayerPlaceholderRefreshIntervals().getOrDefault(identifier, pl.getServerPlaceholderRefreshIntervals().getOrDefault(identifier, pl.getDefaultRefresh()));
-            placeholder = pl.registerPlayerPlaceholder(identifier, refresh, player -> null);
+            placeholder = pl.registerPlayerPlaceholder(identifier, -1, player -> null);
+            refresh = pl.getPlayerPlaceholderRefreshIntervals().getOrDefault(identifier,
+                    pl.getServerPlaceholderRefreshIntervals().getOrDefault(identifier, pl.getDefaultRefresh()));
         }
-        placeholder.enableTriggerMode();
-        bridgePlaceholders.put(placeholder.getIdentifier(), placeholder.getRefresh());
+        bridgePlaceholders.put(placeholder.getIdentifier(), refresh);
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-            plm.sendMessage(all, "Placeholder", placeholder.getIdentifier(), placeholder.getRefresh());
+            plm.sendMessage(all, "Placeholder", placeholder.getIdentifier(), refresh);
         }
     }
 
@@ -105,7 +107,7 @@ public abstract class ProxyPlatform extends Platform {
         new UniversalPlaceholderRegistry().registerPlaceholders(tab.getPlaceholderManager());
         if (tab.getConfiguration().getConfig().getBoolean("scoreboard-teams.enabled", true)) {
             if (tab.getConfiguration().getConfig().getBoolean("scoreboard-teams.unlimited-nametag-mode.enabled", false)) {
-                tab.getFeatureManager().registerFeature(TabConstants.Feature.UNLIMITED_NAME_TAGS, new ProxyNameTagX(plm));
+                tab.getFeatureManager().registerFeature(TabConstants.Feature.UNLIMITED_NAME_TAGS, new ProxyNameTagX());
             } else {
                 tab.getFeatureManager().registerFeature(TabConstants.Feature.NAME_TAGS, new NameTag());
             }
@@ -118,17 +120,12 @@ public abstract class ProxyPlatform extends Platform {
         if (tab.getConfiguration().getConfig().getBoolean("fix-pet-names.enabled", false))
             tab.getFeatureManager().registerFeature(TabConstants.Feature.PET_FIX, new TabFeature("", "") {});
         if (tab.getConfiguration().getConfig().getBoolean("placeholders.register-tab-expansion", false)) {
-            tab.getPlaceholderManager().setTabExpansion(new ProxyTabExpansion(plm));
+            tab.getPlaceholderManager().setTabExpansion(new ProxyTabExpansion());
         }
     }
 
     @Override
     public String getConfigName() {
         return "proxyconfig.yml";
-    }
-
-    @Override
-    public boolean isProxy() {
-        return true;
     }
 }

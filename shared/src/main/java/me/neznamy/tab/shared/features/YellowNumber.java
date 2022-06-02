@@ -29,27 +29,26 @@ public class YellowNumber extends TabFeature {
     private static final String TITLE = "PlayerListObjectiveTitle";
 
     /** Numeric value to display */
-    private final String rawValue = TAB.getInstance().getConfiguration().getConfig().getString("yellow-number-in-tablist.value", "%ping%");
+    private final String rawValue = TAB.getInstance().getConfiguration().getConfig().getString("yellow-number-in-tablist.value", TabConstants.Placeholder.PING);
 
     /** Display type, either INTEGER or HEARTS */
-    private final EnumScoreboardHealthDisplay displayType = "%health%".equals(rawValue) || "%player_health%".equals(rawValue) ||
+    private final EnumScoreboardHealthDisplay displayType = TabConstants.Placeholder.HEALTH.equals(rawValue) || "%player_health%".equals(rawValue) ||
             "%player_health_rounded%".equals(rawValue) ? EnumScoreboardHealthDisplay.HEARTS : EnumScoreboardHealthDisplay.INTEGER;
 
     /**
      * Constructs new instance and sends debug message that feature loaded.
      */
     public YellowNumber() {
-        super("Yellow number", "Updating value", TAB.getInstance().getConfiguration().getConfig().getStringList("yellow-number-in-tablist.disable-in-servers"),
-                TAB.getInstance().getConfiguration().getConfig().getStringList("yellow-number-in-tablist.disable-in-worlds"));
+        super("Yellow number", "Updating value", "yellow-number-in-tablist");
         TAB.getInstance().debug(String.format("Loaded YellowNumber feature with parameters value=%s, disabledWorlds=%s, disabledServers=%s, displayType=%s", rawValue, Arrays.toString(disabledWorlds), Arrays.toString(disabledServers), displayType));
     }
 
     /**
      * Returns current value for specified player
      *
-     * @param    p
-     *             Player to get value of
-     * @return    Current value of player
+     * @param   p
+     *          Player to get value of
+     * @return  Current value of player
      */
     public int getValue(TabPlayer p) {
         return TAB.getInstance().getErrorManager().parseInteger(p.getProperty(TabConstants.Property.YELLOW_NUMBER).updateAndGet(), 0);
@@ -107,8 +106,6 @@ public class YellowNumber extends TabFeature {
     @Override
     public void onServerChange(TabPlayer p, String from, String to) {
         onWorldChange(p, null, null);
-        if (TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) return;
-        onLoginPacket(p);
     }
 
     @Override

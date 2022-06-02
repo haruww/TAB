@@ -17,7 +17,7 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
      * Internal constant used to detect if placeholder threw an error.
      * If so, placeholder's last known value is displayed.
      */
-    private static final String ERROR_VALUE = "ERROR";
+    private final String ERROR_VALUE = "ERROR";
 
     /** Placeholder function returning fresh output on request */
     private final Function<TabPlayer, Object> function;
@@ -28,12 +28,12 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
     /**
      * Constructs new instance with given parameters
      *
-     * @param    identifier
-     *             placeholder's identifier, must start and end with %
-     * @param    refresh
-     *             refresh interval in milliseconds, must be divisible by 50 or equal to -1 for trigger placeholders
-     * @param    function
-     *             refresh function which returns new up-to-date output on request
+     * @param   identifier
+     *          placeholder's identifier, must start and end with %
+     * @param   refresh
+     *          refresh interval in milliseconds, must be divisible by 50 or equal to -1 for trigger placeholders
+     * @param   function
+     *          refresh function which returns new up-to-date output on request
      */
     public PlayerPlaceholderImpl(String identifier, int refresh, Function<TabPlayer, Object> function) {
         super(identifier, refresh);
@@ -44,9 +44,9 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
     /**
      * Gets new value of the placeholder, saves it to map and returns true if value changed, false if not
      *
-     * @param    p
-     *             player to update placeholder for
-     * @return    {@code true} if value changed since last time, {@code false} if not
+     * @param   p
+     *          player to update placeholder for
+     * @return  {@code true} if value changed since last time, {@code false} if not
      */
     public boolean update(TabPlayer p) {
         Object output = request(p);
@@ -61,6 +61,8 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
         if (!lastValues.containsKey(p) || (!ERROR_VALUE.equals(newValue) && !identifier.equals(newValue) && !lastValues.get(p).equals(newValue))) {
             lastValues.put(p, ERROR_VALUE.equals(newValue) ? identifier : newValue);
             updateParents(p);
+            if (TAB.getInstance().getPlaceholderManager().getTabExpansion() != null)
+                TAB.getInstance().getPlaceholderManager().getTabExpansion().setPlaceholderValue(p, identifier, newValue);
             return true;
         }
         return false;
@@ -71,17 +73,19 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
      * features using the placeholder will refresh despite placeholder seemingly not
      * changing output, which is caused by nested placeholder changing value.
      *
-     * @param    player
-     *             player to update value for
-     * @param    value
-     *             new placeholder output
-     * @param    force
-     *             whether refreshing should be forced or not
+     * @param   player
+     *          player to update value for
+     * @param   value
+     *          new placeholder output
+     * @param   force
+     *          whether refreshing should be forced or not
      */
     private void updateValue(TabPlayer player, Object value, boolean force) {
         String s = getReplacements().findReplacement(value == null ? lastValues.getOrDefault(player, identifier) : value.toString());
-        if (lastValues.getOrDefault(player, identifier).equals(s) && !force) return;
+        if (s.equals(lastValues.getOrDefault(player, identifier)) && !force) return;
         lastValues.put(player, s);
+        if (TAB.getInstance().getPlaceholderManager().getTabExpansion() != null)
+            TAB.getInstance().getPlaceholderManager().getTabExpansion().setPlaceholderValue(player, identifier, s);
         if (!player.isLoaded()) return;
         Set<TabFeature> usage = TAB.getInstance().getPlaceholderManager().getPlaceholderUsage().get(identifier);
         if (usage == null) return;
@@ -91,6 +95,11 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
             TAB.getInstance().getCPUManager().addTime(f.getFeatureName(), f.getRefreshDisplayName(), System.nanoTime()-time);
         }
         updateParents(player);
+    }
+
+    @Override
+    public void updateValue(TabPlayer player, Object value) {
+        updateValue(player, value, false);
     }
 
     @Override
@@ -116,10 +125,5 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
             TAB.getInstance().getErrorManager().placeholderError("Player placeholder " + identifier + " generated an error when setting for player " + p.getName(), t);
             return ERROR_VALUE;
         }
-    }
-
-    @Override
-    public void updateValue(TabPlayer player, Object value) {
-        updateValue(player, value, false);
     }
 }

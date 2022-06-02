@@ -18,7 +18,9 @@ public class BungeeEventListener implements Listener {
 
     /**
      * Disconnect event listener to forward the event to all features
-     * @param e - disconnect event
+     *
+     * @param   e
+     *          disconnect event
      */
     @EventHandler
     public void onQuit(PlayerDisconnectEvent e){
@@ -29,8 +31,9 @@ public class BungeeEventListener implements Listener {
 
     /**
      * Listener to join / server switch to forward the event to all features
-     * @param    e
-     *             switch event
+     *
+     * @param   e
+     *          switch event
      */
     @EventHandler
     public void onSwitch(ServerSwitchEvent e){
@@ -46,18 +49,21 @@ public class BungeeEventListener implements Listener {
 
     /**
      * Listener to chat packets to forward the event to all features
-     * @param    e
-     *             chat event
+     *
+     * @param   e
+     *          chat event
      */
     @EventHandler
     public void onChat(ChatEvent e) {
         if (TAB.getInstance().isDisabled()) return;
-        if (e.getMessage().startsWith("/") && TAB.getInstance().getFeatureManager().onCommand(TAB.getInstance().getPlayer(((ProxiedPlayer)e.getSender()).getUniqueId()), e.getMessage())) e.setCancelled(true);
+        if (e.isCommand() && TAB.getInstance().getFeatureManager().onCommand(TAB.getInstance().getPlayer(((ProxiedPlayer)e.getSender()).getUniqueId()), e.getMessage())) e.setCancelled(true);
     }
 
     /**
      * Listener to plugin message event
-     * @param event - plugin message event
+     *
+     * @param   event
+     *          plugin message event
      */
     @EventHandler
     public void on(PluginMessageEvent event){

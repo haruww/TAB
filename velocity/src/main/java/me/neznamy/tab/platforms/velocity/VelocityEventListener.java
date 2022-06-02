@@ -19,7 +19,9 @@ public class VelocityEventListener {
 
     /**
      * Disconnect event listener to forward the event to all features
-     * @param e - disconnect event
+     *
+     * @param   e
+     *          disconnect event
      */
     @Subscribe
     public void onQuit(DisconnectEvent e){
@@ -30,26 +32,28 @@ public class VelocityEventListener {
     
     /**
      * Listener to join / server switch to forward the event to all features
-     * @param    e
-     *             connect event
+     *
+     * @param   e
+     *          connect event
      */
     @Subscribe
     public void onConnect(ServerPostConnectEvent e){
         Player p = e.getPlayer();
         if (TAB.getInstance().isDisabled()) return;
-        if (TAB.getInstance().getPlayer(p.getUniqueId()) == null) {
-            TAB.getInstance().getCPUManager().runTask(() -> TAB.getInstance().getFeatureManager().onJoin(new VelocityTabPlayer(p)));
-        } else {
-            TAB.getInstance().getCPUManager().runTaskLater(300, () ->
-                TAB.getInstance().getFeatureManager().onServerChange(p.getUniqueId(), p.getCurrentServer().isPresent() ? p.getCurrentServer().get().getServerInfo().getName() : "null")
-            );
-        }
+        TAB.getInstance().getCPUManager().runTaskLater(200, () -> {
+            if (TAB.getInstance().getPlayer(p.getUniqueId()) == null) {
+                TAB.getInstance().getCPUManager().runTask(() -> TAB.getInstance().getFeatureManager().onJoin(new VelocityTabPlayer(p)));
+            } else {
+                TAB.getInstance().getFeatureManager().onServerChange(p.getUniqueId(), p.getCurrentServer().isPresent() ? p.getCurrentServer().get().getServerInfo().getName() : "null");
+            }
+        });
     }
 
     /**
      * Listener to commands to forward the event to all features
-     * @param    e
-     *             command event
+     *
+     * @param   e
+     *          command event
      */
     @Subscribe
     public void onCommand(CommandExecuteEvent e) {
@@ -59,7 +63,9 @@ public class VelocityEventListener {
 
     /**
      * Listener to plugin message event
-     * @param event - plugin message event
+     *
+     * @param   event
+     *          plugin message event
      */
     @Subscribe
     public void onPluginMessageEvent(PluginMessageEvent event){

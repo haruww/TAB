@@ -13,6 +13,7 @@ import me.neznamy.tab.api.chat.IChatBaseComponent;
 import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo;
 import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.EnumPlayerInfoAction;
 import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.PlayerInfoData;
+import me.neznamy.tab.api.util.Preconditions;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.features.layout.Layout;
@@ -39,8 +40,7 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
      * Constructs new instance and sends debug message that feature loaded.
      */
     public PlayerList() {
-        super("TabList prefix/suffix", "Updating TabList format", TAB.getInstance().getConfiguration().getConfig().getStringList("tablist-name-formatting.disable-in-servers"),
-                TAB.getInstance().getConfiguration().getConfig().getStringList("tablist-name-formatting.disable-in-worlds"));
+        super("TabList prefix/suffix", "Updating TabList format", "tablist-name-formatting");
         TAB.getInstance().debug(String.format("Loaded PlayerList feature with parameters disabledWorlds=%s, disabledServers=%s, antiOverrideTabList=%s", Arrays.toString(disabledWorlds), Arrays.toString(disabledServers), antiOverrideTabList));
     }
 
@@ -50,11 +50,11 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
      * When it's not enabled, returns player's TabList UUID, which may not match
      * with player's actual UUID due to velocity.
      *
-     * @param    p
-     *             Player to get tablist UUID of
-     * @param    viewer
-     *             TabList viewer
-     * @return    UUID of TabList entry representing requested player
+     * @param   p
+     *          Player to get tablist UUID of
+     * @param   viewer
+     *          TabList viewer
+     * @return  UUID of TabList entry representing requested player
      */
     public UUID getTablistUUID(TabPlayer p, TabPlayer viewer) {
         LayoutManager manager = (LayoutManager) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.LAYOUT);
@@ -74,9 +74,9 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
      * Loads all properties from config and returns {@code true} if at least
      * one of them either wasn't loaded or changed value, {@code false} otherwise.
      *
-     * @param    p
-     *             Player to update properties of
-     * @return    {@code true} if at least one property changed, {@code false} if not
+     * @param   p
+     *          Player to update properties of
+     * @return  {@code true} if at least one property changed, {@code false} if not
      */
     protected boolean updateProperties(TabPlayer p) {
         boolean changed = p.loadPropertyFromConfig(this, TabConstants.Property.TABPREFIX);
@@ -88,10 +88,10 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
     /**
      * Updates TabList format of requested player to everyone.
      *
-     * @param    p
-     *             Player to update
-     * @param    format
-     *             Whether player's actual format should be used or {@code null} for reset
+     * @param   p
+     *          Player to update
+     * @param   format
+     *          Whether player's actual format should be used or {@code null} for reset
      */
     protected void updatePlayer(TabPlayer p, boolean format) {
         for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
@@ -106,11 +106,11 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
     /**
      * Returns TabList format of player for viewer
      *
-     * @param    p
-     *             Player to get format of
-     * @param    viewer
-     *             Viewer seeing the format
-     * @return    Format of specified player for viewer
+     * @param   p
+     *          Player to get format of
+     * @param   viewer
+     *          Viewer seeing the format
+     * @return  Format of specified player for viewer
      */
     public IChatBaseComponent getTabFormat(TabPlayer p, TabPlayer viewer) {
         Property prefix = p.getProperty(TabConstants.Property.TABPREFIX);
@@ -233,67 +233,79 @@ public class PlayerList extends TabFeature implements TablistFormatManager {
 
     @Override
     public void setPrefix(TabPlayer player, String prefix) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TABPREFIX).setTemporaryValue(prefix);
         updatePlayer(player, true);
     }
 
     @Override
     public void setName(TabPlayer player, String customName) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.CUSTOMTABNAME).setTemporaryValue(customName);
         updatePlayer(player, true);
     }
 
     @Override
     public void setSuffix(TabPlayer player, String suffix) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TABSUFFIX).setTemporaryValue(suffix);
         updatePlayer(player, true);
     }
 
     @Override
     public void resetPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TABPREFIX).setTemporaryValue(null);
         updatePlayer(player, true);
     }
 
     @Override
     public void resetName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.CUSTOMTABNAME).setTemporaryValue(null);
         updatePlayer(player, true);
     }
 
     @Override
     public void resetSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TABSUFFIX).setTemporaryValue(null);
         updatePlayer(player, true);
     }
 
     @Override
     public String getCustomPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TABPREFIX).getTemporaryValue();
     }
 
     @Override
     public String getCustomName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.CUSTOMTABNAME).getTemporaryValue();
     }
 
     @Override
     public String getCustomSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TABSUFFIX).getTemporaryValue();
     }
 
     @Override
     public String getOriginalPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TABPREFIX).getOriginalRawValue();
     }
 
     @Override
     public String getOriginalName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.CUSTOMTABNAME).getOriginalRawValue();
     }
 
     @Override
     public String getOriginalSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TABSUFFIX).getOriginalRawValue();
     }
 }

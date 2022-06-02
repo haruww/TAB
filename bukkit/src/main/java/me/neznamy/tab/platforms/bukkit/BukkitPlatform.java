@@ -5,7 +5,6 @@ import com.viaversion.viaversion.api.Via;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.chat.EnumChatFormat;
-import me.neznamy.tab.api.util.Preconditions;
 import me.neznamy.tab.platforms.bukkit.event.TabLoadEvent;
 import me.neznamy.tab.platforms.bukkit.event.TabPlayerLoadEvent;
 import me.neznamy.tab.platforms.bukkit.features.BukkitTabExpansion;
@@ -42,31 +41,31 @@ public class BukkitPlatform extends Platform {
     private final JavaPlugin plugin;
 
     /** Variables checking presence of other plugins to hook into */
-    private final boolean placeholderAPI = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
-    private boolean libsDisguises = Bukkit.getPluginManager().isPluginEnabled("LibsDisguises");
-    private final Plugin essentials = Bukkit.getPluginManager().getPlugin("Essentials");
+    private final boolean placeholderAPI = Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.PLACEHOLDER_API);
+    private boolean libsDisguises = Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.LIBS_DISGUISES);
+    private final Plugin essentials = Bukkit.getPluginManager().getPlugin(TabConstants.Plugin.ESSENTIALS);
     private Plugin viaVersion;
-    private final boolean protocolSupport = Bukkit.getPluginManager().isPluginEnabled("ProtocolSupport");
+    private final boolean protocolSupport = Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.PROTOCOL_SUPPORT);
 
     /**
      * Constructs new instance with given plugin parameter
-     * @param    plugin
-     *             plugin instance
+     *
+     * @param   plugin
+     *          plugin instance
      */
     public BukkitPlatform(JavaPlugin plugin) {
         super(new BukkitPacketBuilder());
-        Preconditions.checkNotNull(plugin, "plugin");
         this.plugin = plugin;
     }
 
     @Override
     public PermissionPlugin detectPermissionPlugin() {
-        if (Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
-            return new LuckPerms(getPluginVersion("LuckPerms"));
-        } else if (Bukkit.getPluginManager().isPluginEnabled("Vault")) {
+        if (Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.LUCKPERMS)) {
+            return new LuckPerms(getPluginVersion(TabConstants.Plugin.LUCKPERMS));
+        } else if (Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.VAULT)) {
             RegisteredServiceProvider<Permission> provider = Bukkit.getServicesManager().getRegistration(Permission.class);
             if (provider == null) return new None();
-            return new Vault(provider.getProvider(), getPluginVersion("Vault"));
+            return new Vault(provider.getProvider(), getPluginVersion(TabConstants.Plugin.VAULT));
         } else {
             return new None();
         }
@@ -74,21 +73,15 @@ public class BukkitPlatform extends Platform {
 
     @Override
     public void loadFeatures() {
-        if (Bukkit.getPluginManager().isPluginEnabled("ViaVersion")) {
+        if (Bukkit.getPluginManager().isPluginEnabled(TabConstants.Plugin.VIAVERSION)) {
             try {
                 Class.forName("com.viaversion.viaversion.api.Via");
-                viaVersion = Bukkit.getPluginManager().getPlugin("ViaVersion");
+                viaVersion = Bukkit.getPluginManager().getPlugin(TabConstants.Plugin.VIAVERSION);
             } catch (ClassNotFoundException e) {
-                TAB.getInstance().sendConsoleMessage("&c[TAB] An outdated version of ViaVersion (" + getPluginVersion("ViaVersion") + ") was detected.", true);
-                TAB.getInstance().sendConsoleMessage("&c[TAB] TAB only supports ViaVersion 4.0.0 and above. Disabling ViaVersion hook.", true);
-                TAB.getInstance().sendConsoleMessage("&c[TAB] This might cause problems, such as limitations still being present for latest MC clients as well as RGB not working.", true);
+                TAB.getInstance().sendConsoleMessage("&cAn outdated version of ViaVersion (" + getPluginVersion(TabConstants.Plugin.VIAVERSION) + ") was detected.", true);
+                TAB.getInstance().sendConsoleMessage("&cTAB only supports ViaVersion 4.0.0 and above. Disabling ViaVersion hook.", true);
+                TAB.getInstance().sendConsoleMessage("&cThis might cause problems, such as limitations still being present for latest MC clients as well as RGB not working.", true);
             }
-        }
-        if (Bukkit.getPluginManager().isPluginEnabled("Tablisknu")) {
-            TAB.getInstance().sendConsoleMessage("&c[TAB] Detected plugin \"Tablisknu\", which causes TAB to not work properly. Consider removing the plugin.", true);
-        }
-        if (Bukkit.getPluginManager().isPluginEnabled("SkBee")) {
-            TAB.getInstance().sendConsoleMessage("&c[TAB] Detected plugin \"SkBee\", which causes TAB's scoreboard to not show. Consider removing the plugin.", true);
         }
         TAB tab = TAB.getInstance();
         if (tab.getConfiguration().isPipelineInjection())
@@ -125,14 +118,14 @@ public class BukkitPlatform extends Platform {
 
     @Override
     public String getPluginVersion(String plugin) {
-        Preconditions.checkNotNull(plugin, "plugin");
         Plugin pl = Bukkit.getPluginManager().getPlugin(plugin);
         return pl == null ? null : pl.getDescription().getVersion();
     }
 
     /**
      * Returns online players from Bukkit API
-     * @return    online players from Bukkit API
+     *
+     * @return  online players from Bukkit API
      */
     @SuppressWarnings("unchecked")
     private Player[] getOnlinePlayers() {
@@ -152,14 +145,7 @@ public class BukkitPlatform extends Platform {
     }
 
     @Override
-    public void sendConsoleMessage(String message, boolean translateColors) {
-        Preconditions.checkNotNull(message, "message");
-        Bukkit.getConsoleSender().sendMessage(translateColors ? EnumChatFormat.color(message) : message);
-    }
-
-    @Override
     public void registerUnknownPlaceholder(String identifier) {
-        Preconditions.checkNotNull(identifier, "identifier");
         PlaceholderManagerImpl pl = TAB.getInstance().getPlaceholderManager();
         if (identifier.startsWith("%rel_")) {
             //relational placeholder
@@ -208,7 +194,8 @@ public class BukkitPlatform extends Platform {
 
     /**
      * Returns status of LibsDisguises plugin presence
-     * @return    {@code true} if plugin is enabled, {@code false} if not
+     *
+     * @return  {@code true} if plugin is enabled, {@code false} if not
      */
     public boolean isLibsDisguisesEnabled() {
         return libsDisguises;
@@ -218,8 +205,9 @@ public class BukkitPlatform extends Platform {
      * Sets LibsDisguises presence status to provided value. This is used
      * to disable LibsDisguises hook in case the plugin is not correctly loaded
      * for any reason to avoid error spam in the hook.
-     * @param    enabled
-     *             New status of LibsDisguises presence
+     *
+     * @param   enabled
+     *          New status of LibsDisguises presence
      */
     public void setLibsDisguisesEnabled(boolean enabled) {
         libsDisguises = enabled;
@@ -227,15 +215,11 @@ public class BukkitPlatform extends Platform {
 
     /**
      * Returns Essentials' main class if the plugin is installed, {@code null} if not
-     * @return    Essentials instance or {@code null} if plugin is not installed
+     *
+     * @return  Essentials instance or {@code null} if plugin is not installed
      */
     public Essentials getEssentials() {
         return (Essentials) essentials;
-    }
-
-    @Override
-    public boolean isProxy() {
-        return false;
     }
 
     @Override
@@ -245,9 +229,10 @@ public class BukkitPlatform extends Platform {
 
     /**
      * Gets protocol version of requested player and returns it.
-     * @param    player
-     *             Player to get protocol version of
-     * @return    protocol version of the player
+     *
+     * @param   player
+     *          Player to get protocol version of
+     * @return  protocol version of the player
      */
     public int getProtocolVersion(Player player) {
         if (protocolSupport){
@@ -263,15 +248,16 @@ public class BukkitPlatform extends Platform {
 
     /**
      * Returns protocol version of requested player using ProtocolSupport
-     * @param    player
-     *             Player to get protocol version of
-     * @return    protocol version of the player using ProtocolSupport
+     *
+     * @param   player
+     *          Player to get protocol version of
+     * @return  protocol version of the player using ProtocolSupport
      */
     private int getProtocolVersionPS(Player player){
         try {
             Object protocolVersion = Class.forName("protocolsupport.api.ProtocolSupportAPI").getMethod("getProtocolVersion", Player.class).invoke(null, player);
             int version = (int) protocolVersion.getClass().getMethod("getId").invoke(protocolVersion);
-            TAB.getInstance().debug("ProtocolSupport returned protocol version " + version + " for " + player.getName() + "(online=" + player.isOnline() + ")");
+            TAB.getInstance().debug("ProtocolSupport returned protocol version " + version + " for " + player.getName() + " (online=" + player.isOnline() + ")");
             return version;
         } catch (ReflectiveOperationException e) {
             TAB.getInstance().getErrorManager().printError(String.format("Failed to get protocol version of %s using ProtocolSupport", player.getName()), e);
@@ -281,9 +267,10 @@ public class BukkitPlatform extends Platform {
 
     /**
      * Returns protocol version of requested player using ViaVersion
-     * @param    player
-     *             Player to get protocol version of
-     * @return    protocol version of the player using ViaVersion
+     *
+     * @param   player
+     *          Player to get protocol version of
+     * @return  protocol version of the player using ViaVersion
      */
     private int getProtocolVersionVia(Player player, int retryLevel){
         try {
@@ -297,7 +284,7 @@ public class BukkitPlatform extends Platform {
                 Thread.sleep(5);
                 return getProtocolVersionVia(player, retryLevel + 1);
             }
-            TAB.getInstance().debug("ViaVersion returned protocol version " + version + " for " + player.getName() + "(online=" + player.isOnline() + ")");
+            TAB.getInstance().debug("ViaVersion returned protocol version " + version + " for " + player.getName() + " (online=" + player.isOnline() + ")");
             return version;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -306,5 +293,19 @@ public class BukkitPlatform extends Platform {
             TAB.getInstance().getErrorManager().printError(String.format("Failed to get protocol version of %s using ViaVersion v%s", player.getName(), viaVersion.getDescription().getVersion()), e);
             return TAB.getInstance().getServerVersion().getNetworkId();
         }
+    }
+
+    /**
+     * Sends console message using ConsoleCommandSender, due to
+     * Paper not translating colors correctly in Logger messages
+     *
+     * @param   message
+     *          Message to send
+     * @param   translateColors
+     *          Whether color codes should be translated or not
+     */
+    @Override
+    public void sendConsoleMessage(String message, boolean translateColors) {
+        Bukkit.getConsoleSender().sendMessage("[TAB] " + (translateColors ? EnumChatFormat.color(message) : message));
     }
 }

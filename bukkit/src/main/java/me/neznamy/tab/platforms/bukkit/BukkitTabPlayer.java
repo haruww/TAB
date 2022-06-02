@@ -48,20 +48,19 @@ public class BukkitTabPlayer extends ITabPlayer {
 
     /**
      * Constructs new instance with given bukkit player and protocol version
-     * @param    p
-     *             bukkit player
-     * @param    protocolVersion
-     *             Player's protocol network id
+     *
+     * @param   p
+     *          bukkit player
+     * @param   protocolVersion
+     *          Player's protocol network id
      */
     public BukkitTabPlayer(Player p, int protocolVersion){
         super(p, p.getUniqueId(), p.getName(), "N/A", p.getWorld().getName(), protocolVersion);
         try {
             handle = NMSStorage.getInstance().getHandle.invoke(player);
             playerConnection = NMSStorage.getInstance().PLAYER_CONNECTION.get(handle);
-            if (NMSStorage.getInstance().CHANNEL != null)
-                channel = (Channel) NMSStorage.getInstance().CHANNEL.get(NMSStorage.getInstance().NETWORK_MANAGER.get(playerConnection));
         } catch (ReflectiveOperationException e) {
-            TAB.getInstance().getErrorManager().printError("Failed to get playerConnection or channel of " + p.getName(), e);
+            TAB.getInstance().getErrorManager().printError("Failed to get playerConnection of " + p.getName(), e);
         }
     }
 
@@ -109,8 +108,9 @@ public class BukkitTabPlayer extends ITabPlayer {
      * Handles PacketPlayOutBoss packet send request using Bukkit API,
      * since the API offers everything we need and makes us not need to
      * deal with NMS code at all.
-     * @param    packet
-     *             packet request to handle using Bukkit API
+     *
+     * @param   packet
+     *          packet request to handle using Bukkit API
      */
     private void handle(PacketPlayOutBoss packet) {
         BossBar bar = bossBars.get(packet.getId());
@@ -157,8 +157,9 @@ public class BukkitTabPlayer extends ITabPlayer {
     /**
      * Handles PacketPlayOutBoss packet request for 1.9+ clients on
      * 1.8 servers using ViaVersion API instead of using Wither.
-     * @param    packet
-     *             packet request to handle using ViaVersion API
+     *
+     * @param   packet
+     *          packet request to handle using ViaVersion API
      */
     private void handleVia(PacketPlayOutBoss packet) {
         com.viaversion.viaversion.api.legacy.bossbar.BossBar bar;
@@ -202,12 +203,13 @@ public class BukkitTabPlayer extends ITabPlayer {
 
     /**
      * Sets BossBar flag to requested target value.
-     * @param    bar
-     *             BossBar to set flag of
-     * @param    targetValue
-     *             Target value of the flag
-     * @param    flag
-     *             Flag to set value of
+     *
+     * @param   bar
+     *          BossBar to set flag of
+     * @param   targetValue
+     *          Target value of the flag
+     * @param   flag
+     *          Flag to set value of
      */
     private void processFlag(BossBar bar, boolean targetValue, BarFlag flag) {
         if (targetValue && !bar.hasFlag(flag)) bar.addFlag(flag);
@@ -216,12 +218,13 @@ public class BukkitTabPlayer extends ITabPlayer {
 
     /**
      * Sets BossBar flag to requested target value.
-     * @param    bar
-     *             BossBar to set flag of
-     * @param    targetValue
-     *             Target value of the flag
-     * @param    flag
-     *             Flag to set value of
+     *
+     * @param   bar
+     *          BossBar to set flag of
+     * @param   targetValue
+     *          Target value of the flag
+     * @param   flag
+     *          Flag to set value of
      */
     private void processFlagVia(com.viaversion.viaversion.api.legacy.bossbar.BossBar bar, boolean targetValue, BossFlag flag) {
         if (targetValue && !bar.hasFlag(flag)) bar.addFlag(flag);
@@ -282,5 +285,16 @@ public class BukkitTabPlayer extends ITabPlayer {
     @Override
     public int getGamemode() {
         return getPlayer().getGameMode().getValue();
+    }
+
+    @Override
+    public Channel getChannel() {
+        try {
+            if (NMSStorage.getInstance().CHANNEL != null)
+                return (Channel) NMSStorage.getInstance().CHANNEL.get(NMSStorage.getInstance().NETWORK_MANAGER.get(playerConnection));
+        } catch (IllegalAccessException e) {
+            TAB.getInstance().getErrorManager().printError("Failed to get channel of " + getName(), e);
+        }
+        return null;
     }
 }

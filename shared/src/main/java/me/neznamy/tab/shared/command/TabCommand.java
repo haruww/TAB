@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 
+import me.neznamy.tab.api.ProtocolVersion;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.chat.EnumChatFormat;
 import me.neznamy.tab.api.chat.IChatBaseComponent;
@@ -64,7 +65,9 @@ public class TabCommand extends SubCommand {
 
     /**
      * Sends help menu to the sender
-     * @param sender - player who ran command or null if from console
+     *
+     * @param   sender
+     *          player who ran command or null if from console
      */
     private void help(TabPlayer sender){
         if (hasPermission(sender, TabConstants.Permission.COMMAND_ALL)) {
@@ -75,10 +78,10 @@ public class TabCommand extends SubCommand {
                 component.addExtra(new IChatBaseComponent(EnumChatFormat.color("&0 by _NEZNAMY_")));
                 sender.sendMessage(component);
             } else {
-                TAB.getInstance().getPlatform().sendConsoleMessage("&3TAB v" + TabConstants.PLUGIN_VERSION, true);
+                TAB.getInstance().sendConsoleMessage("&3TAB v" + TabConstants.PLUGIN_VERSION, true);
             }
             for (String message : getMessages().getHelpMenu()) {
-                if (TAB.getInstance().getPlatform().isProxy()) message = message.replace("/tab", "/btab");
+                if (TAB.getInstance().getServerVersion() == ProtocolVersion.PROXY) message = message.replace("/tab", "/btab");
                 sendMessage(sender, message);
             }
         }

@@ -14,13 +14,13 @@ import net.luckperms.api.query.QueryOptions;
  */
 public class LuckPerms extends PermissionPlugin {
 
-    private static final String UPDATE_MESSAGE = "Upgrade to LuckPerms 5";
+    private final String UPDATE_MESSAGE = "Upgrade to LuckPerms 5";
 
     /**
      * Constructs new instance with given parameter
      *
-     * @param    version
-     *             LuckPerms version
+     * @param   version
+     *          LuckPerms version
      */
     public LuckPerms(String version) {
         super(version);
@@ -32,19 +32,19 @@ public class LuckPerms extends PermissionPlugin {
             if (getVersion().startsWith("4")) return UPDATE_MESSAGE;
             net.luckperms.api.LuckPerms api = LuckPermsProvider.get();
             User user = api.getUserManager().getUser(p.getUniqueId());
-            if (user == null) return TabConstants.DEFAULT_GROUP; //pretend like nothing is wrong
+            if (user == null) return TabConstants.NO_GROUP; //pretend like nothing is wrong
             return user.getPrimaryGroup();
         } catch (Exception e) {
-            return TabConstants.DEFAULT_GROUP;
+            return TabConstants.NO_GROUP;
         }
     }
 
     /**
      * Returns player's prefix configured in LuckPerms
      *
-     * @param    p
-     *             Player to get prefix of
-     * @return    Player's prefix
+     * @param   p
+     *          Player to get prefix of
+     * @return  Player's prefix
      */
     public String getPrefix(TabPlayer p) {
         return getValue(p, true);
@@ -53,9 +53,9 @@ public class LuckPerms extends PermissionPlugin {
     /**
      * Returns player's suffix configured in LuckPerms
      *
-     * @param    p
-     *             Player to get suffix of
-     * @return    Player's suffix
+     * @param   p
+     *          Player to get suffix of
+     * @return  Player's suffix
      */
     public String getSuffix(TabPlayer p) {
         return getValue(p, false);
@@ -65,11 +65,11 @@ public class LuckPerms extends PermissionPlugin {
      * Returns player's metadata value based on entered boolean flag,
      * {@code true} for prefix, {@code false} for suffix.
      *
-     * @param    p
-     *             Player to get metadata value of
-     * @param    prefix
-     *             {@code true} if prefix should be returned, {@code false} if suffix
-     * @return    Player's metadata value
+     * @param   p
+     *          Player to get metadata value of
+     * @param   prefix
+     *          {@code true} if prefix should be returned, {@code false} if suffix
+     * @return  Player's metadata value
      */
     private String getValue(TabPlayer p, boolean prefix) {
         try {

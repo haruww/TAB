@@ -1,6 +1,5 @@
 package me.neznamy.tab.platforms.bukkit.features;
 
-import me.neznamy.tab.api.util.Preconditions;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -27,10 +26,11 @@ public class WitherBossBar extends BossBarManagerImpl implements Listener {
     
     /**
      * Constructs a new instance of the class
-     * @param plugin - plugin instance
+     *
+     * @param   plugin
+     *          plugin instance
      */
     public WitherBossBar(JavaPlugin plugin) {
-        Preconditions.checkNotNull(plugin, "plugin");
         Bukkit.getPluginManager().registerEvents(this, plugin);
         //when MC is on fullscreen, BossBar disappears after 1 second of not being seen
         //when in a small window, it's about 100ms

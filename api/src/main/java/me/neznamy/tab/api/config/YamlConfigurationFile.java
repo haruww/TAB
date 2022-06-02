@@ -36,18 +36,18 @@ public class YamlConfigurationFile extends ConfigurationFile {
      * Constructs new instance and attempts to load specified configuration file.
      * If file does not exist, default file is copied from {@code source}.
      *
-     * @param    source
-     *             Source to copy file from if it does not exist
-     * @param    destination
-     *             File destination to use
-     * @throws    IllegalArgumentException
-     *             if {@code destination} is null
-     * @throws    IllegalStateException
-     *             if file does not exist and source is null
-     * @throws    YAMLException
-     *             if file has invalid YAML syntax
-     * @throws    IOException
-     *             if I/O operation with the file unexpectedly fails
+     * @param   source
+     *          Source to copy file from if it does not exist
+     * @param   destination
+     *          File destination to use
+     * @throws  IllegalArgumentException
+     *          if {@code destination} is null
+     * @throws  IllegalStateException
+     *          if file does not exist and source is null
+     * @throws  YAMLException
+     *          if file has invalid YAML syntax
+     * @throws  IOException
+     *          if I/O operation with the file unexpectedly fails
      */
     public YamlConfigurationFile(InputStream source, File destination) throws YAMLException, IOException {
         super(source, destination);
@@ -60,13 +60,14 @@ public class YamlConfigurationFile extends ConfigurationFile {
         } catch (YAMLException e) {
             if (input != null) input.close();
             TabAPI tab = TabAPI.getInstance();
-            tab.sendConsoleMessage("&c[TAB] File " + destination + " has broken syntax.", true);
-            tab.sendConsoleMessage("&6[TAB] Error message from yaml parser: " + e.getMessage(), true);
+            tab.setBrokenFile(destination.getName());
+            tab.sendConsoleMessage("&cFile " + destination + " has broken syntax.", true);
+            tab.sendConsoleMessage("&6Error message from yaml parser: " + e.getMessage(), true);
             List<String> suggestions = YamlAssist.getSuggestions(file);
             if (!suggestions.isEmpty()) {
-                tab.sendConsoleMessage("&d[TAB] Suggestions to fix yaml syntax:", true);
+                tab.sendConsoleMessage("&dSuggestions to fix yaml syntax:", true);
                 for (String suggestion : suggestions) {
-                    tab.sendConsoleMessage("&d[TAB] - " + suggestion, true);
+                    tab.sendConsoleMessage("&d- " + suggestion, true);
                 }
             }
             throw e;
@@ -81,7 +82,7 @@ public class YamlConfigurationFile extends ConfigurationFile {
             writer.close();
             fixHeader();
         } catch (IOException e) {
-            TabAPI.getInstance().sendConsoleMessage("&c[TAB] Failed to save yaml file " + file.getPath() + " with content " + values.toString(), true);
+            TabAPI.getInstance().sendConsoleMessage("&cFailed to save yaml file " + file.getPath() + " with content " + values.toString(), true);
         }
     }
 }

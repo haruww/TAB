@@ -8,6 +8,7 @@ import com.google.common.collect.Lists;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.placeholder.Placeholder;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.features.PlaceholderManagerImpl;
 import me.neznamy.tab.shared.placeholders.conditions.simple.*;
 
@@ -59,14 +60,14 @@ public class Condition {
      * Constructs new instance with given parameters and registers
      * this condition to list as well as the placeholder.
      *
-     * @param    name
-     *             name of condition
-     * @param    conditions
-     *             list of condition lines
-     * @param    yes
-     *             value to return if condition is met
-     * @param    no
-     *             value to return if condition is not met
+     * @param   name
+     *          name of condition
+     * @param   conditions
+     *          list of condition lines
+     * @param   yes
+     *          value to return if condition is met
+     * @param   no
+     *          value to return if condition is not met
      */
     public Condition(boolean type, String name, List<String> conditions, String yes, String no) {
         this.type = type;
@@ -116,7 +117,7 @@ public class Condition {
     /**
      * Returns refresh interval of placeholder made from this condition
      *
-     * @return    refresh interval of placeholder made from this condition
+     * @return  refresh interval of placeholder made from this condition
      */
     public int getRefresh() {
         return refresh;
@@ -125,7 +126,7 @@ public class Condition {
     /**
      * Returns name of this condition
      *
-     * @return    name of this condition
+     * @return  name of this condition
      */
     public String getName() {
         return name;
@@ -134,9 +135,9 @@ public class Condition {
     /**
      * Returns text for player based on if condition is met or not
      *
-     * @param    p
-     *             player to check condition for
-     * @return    yes or no value depending on if condition passed or not
+     * @param   p
+     *          player to check condition for
+     * @return  yes or no value depending on if condition passed or not
      */
     public String getText(TabPlayer p) {
         return isMet(p) ? yes : no;
@@ -145,9 +146,9 @@ public class Condition {
     /**
      * Returns {@code true} if condition is met for player, {@code false} if not
      *
-     * @param    p
-     *             player to check conditions for
-     * @return    {@code true} if met, {@code false} if not
+     * @param   p
+     *          player to check conditions for
+     * @return  {@code true} if met, {@code false} if not
      */
     public boolean isMet(TabPlayer p) {
         if (type) {
@@ -168,9 +169,9 @@ public class Condition {
      * that condition is returned. If it's a condition pattern, it is compiled and
      * returned. If the string is null, null is returned.
      *
-     * @param    string
-     *             condition name or pattern
-     * @return    condition from string
+     * @param   string
+     *          condition name or pattern
+     * @return  condition from string
      */
     public static Condition getCondition(String string) {
         if (string == null) return null;
@@ -178,7 +179,7 @@ public class Condition {
             return registeredConditions.get(string);
         } else {
             Condition c = new Condition(true, "AnonymousCondition[" + string + "]", Lists.newArrayList(string.split(";")), "true", "false");
-            TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder("%condition:" + c.getName() + "%", c.getRefresh(), c::getText);
+            TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(TabConstants.Placeholder.condition(c.getName()), c.getRefresh(), c::getText);
             return c;
         }
     }
@@ -192,7 +193,8 @@ public class Condition {
 
     /**
      * Returns map of all registered condition types
-     * @return    all registered condition types
+     *
+     * @return  all registered condition types
      */
     public static Map<String, Function<String, SimpleCondition>> getConditionTypes() {
         return conditionTypes;

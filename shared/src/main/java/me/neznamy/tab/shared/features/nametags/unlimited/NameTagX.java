@@ -3,6 +3,7 @@ package me.neznamy.tab.shared.features.nametags.unlimited;
 import me.neznamy.tab.api.ArmorStandManager;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.team.UnlimitedNametagManager;
+import me.neznamy.tab.api.util.Preconditions;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.features.TabExpansion;
@@ -156,7 +157,9 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     /**
      * Updates raw values of properties for specified player
-     * @param p - player to update
+     *
+     * @param   p
+     *          player to update
      */
     @Override
     public boolean updateProperties(TabPlayer p) {
@@ -176,6 +179,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
     @Override
     public boolean getTeamVisibility(TabPlayer p, TabPlayer viewer) {
         if (p.hasInvisibilityPotion()) return false; //1.8.x client sided bug
+        if (playersWithInvisibleNameTagView.contains(viewer)) return false;
         return isOnBoat(p) || isPlayerDisabled(p);
     }
 
@@ -224,6 +228,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void disableArmorStands(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         if (playersDisabledWithAPI.contains(player)) return;
         playersDisabledWithAPI.add(player);
         pauseArmorStands(player);
@@ -232,6 +237,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void enableArmorStands(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         if (!playersDisabledWithAPI.contains(player)) return;
         playersDisabledWithAPI.remove(player);
         resumeArmorStands(player);
@@ -245,6 +251,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void setName(TabPlayer player, String customName) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.CUSTOMTAGNAME).setTemporaryValue(customName);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -252,12 +259,15 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void setLine(TabPlayer player, String line, String value) {
+        Preconditions.checkLoaded(player);
+        if (!getDefinedLines().contains(line)) throw new IllegalArgumentException("\"" + line + "\" is not a defined line. Defined lines: " + getDefinedLines());
         player.getProperty(line).setTemporaryValue(value);
         getArmorStandManager(player).refresh(true);
     }
 
     @Override
     public void resetName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.CUSTOMTAGNAME).setTemporaryValue(null);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -265,27 +275,32 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void resetLine(TabPlayer player, String line) {
+        Preconditions.checkLoaded(player);
         player.getProperty(line).setTemporaryValue(null);
         getArmorStandManager(player).refresh(true);
     }
 
     @Override
     public String getCustomName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.CUSTOMTAGNAME).getTemporaryValue();
     }
 
     @Override
     public String getCustomLineValue(TabPlayer player, String line) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(line).getTemporaryValue();
     }
 
     @Override
     public String getOriginalName(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.CUSTOMTAGNAME).getOriginalRawValue();
     }
 
     @Override
     public String getOriginalLineValue(TabPlayer player, String line) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(line).getOriginalRawValue();
     }
 
@@ -305,6 +320,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void setPrefix(TabPlayer player, String prefix) {
+        Preconditions.checkLoaded(player);
         super.setPrefix(player, prefix);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -312,6 +328,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void setSuffix(TabPlayer player, String suffix) {
+        Preconditions.checkLoaded(player);
         super.setSuffix(player, suffix);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -319,6 +336,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void resetPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         super.resetPrefix(player);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -326,6 +344,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void resetSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         super.resetSuffix(player);
         rebuildNameTagLine(player);
         getArmorStandManager(player).refresh(true);
@@ -333,6 +352,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void pauseTeamHandling(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         if (teamHandlingPaused.contains(player)) return;
         if (!isDisabledPlayer(player)) unregisterTeam(player);
         teamHandlingPaused.add(player); //adding after, so unregisterTeam method runs
@@ -341,6 +361,7 @@ public abstract class NameTagX extends NameTag implements UnlimitedNametagManage
 
     @Override
     public void resumeTeamHandling(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         if (!teamHandlingPaused.contains(player)) return;
         teamHandlingPaused.remove(player); //removing before, so registerTeam method runs
         if (!isDisabledPlayer(player)) registerTeam(player);

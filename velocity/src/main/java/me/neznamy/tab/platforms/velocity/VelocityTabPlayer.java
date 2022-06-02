@@ -28,31 +28,36 @@ import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 
 /**
- * TabPlayer for Velocity
+ * TabPlayer implementation for Velocity
  */
 public class VelocityTabPlayer extends ProxyTabPlayer {
 
+    /**
+     * Map of methods executing tasks using API calls equal to sending the actual packets
+     */
     private final Map<Class<? extends TabPacket>, Consumer<TabPacket>> packetMethods
             = new HashMap<Class<? extends TabPacket>, Consumer<TabPacket>>(){{
-        put(PacketPlayOutBoss.class, (packet) -> handle((PacketPlayOutBoss) packet));
-        put(PacketPlayOutChat.class, (packet) -> handle((PacketPlayOutChat) packet));
-        put(PacketPlayOutPlayerInfo.class, (packet) -> handle((PacketPlayOutPlayerInfo) packet));
-        put(PacketPlayOutPlayerListHeaderFooter.class, (packet) -> handle((PacketPlayOutPlayerListHeaderFooter) packet));
-        put(PacketPlayOutScoreboardDisplayObjective.class, (packet) -> handle((PacketPlayOutScoreboardDisplayObjective) packet));
-        put(PacketPlayOutScoreboardObjective.class, (packet) -> handle((PacketPlayOutScoreboardObjective) packet));
-        put(PacketPlayOutScoreboardScore.class, (packet) -> handle((PacketPlayOutScoreboardScore) packet));
-        put(PacketPlayOutScoreboardTeam.class, (packet) -> handle((PacketPlayOutScoreboardTeam) packet));
+        put(PacketPlayOutBoss.class, packet -> handle((PacketPlayOutBoss) packet));
+        put(PacketPlayOutChat.class, packet -> handle((PacketPlayOutChat) packet));
+        put(PacketPlayOutPlayerInfo.class, packet -> handle((PacketPlayOutPlayerInfo) packet));
+        put(PacketPlayOutPlayerListHeaderFooter.class, packet -> handle((PacketPlayOutPlayerListHeaderFooter) packet));
+        put(PacketPlayOutScoreboardDisplayObjective.class, packet -> handle((PacketPlayOutScoreboardDisplayObjective) packet));
+        put(PacketPlayOutScoreboardObjective.class, packet -> handle((PacketPlayOutScoreboardObjective) packet));
+        put(PacketPlayOutScoreboardScore.class, packet -> handle((PacketPlayOutScoreboardScore) packet));
+        put(PacketPlayOutScoreboardTeam.class, packet -> handle((PacketPlayOutScoreboardTeam) packet));
     }};
 
-    //uuid used in TabList
+    /** Player's tablist UUID */
     private final UUID tabListId;
     
-    //player's visible boss bars
+    /** BossBars currently displayed to this player */
     private final Map<UUID, BossBar> bossBars = new HashMap<>();
 
     /**
      * Constructs new instance for given player
-     * @param p - velocity player
+     *
+     * @param   p
+     *          velocity player
      */
     public VelocityTabPlayer(Player p) {
         super(p, p.getUniqueId(), p.getUsername(), p.getCurrentServer().isPresent() ?
@@ -63,7 +68,6 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
     
     @Override
     public boolean hasPermission0(String permission) {
-        Preconditions.checkNotNull(permission, "permission");
         long time = System.nanoTime();
         boolean value = getPlayer().hasPermission(permission);
         TAB.getInstance().getCPUManager().addMethodTime("hasPermission", System.nanoTime()-time);
@@ -83,18 +87,37 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
         TAB.getInstance().getCPUManager().addMethodTime("sendPacket", System.nanoTime()-time);
     }
 
+    /**
+     * Handles PacketPlayOutChat request using Velocity API
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutChat packet) {
         if (packet.getType() == ChatMessageType.GAME_INFO) {
-            getPlayer().sendActionBar(Main.convertComponent(packet.getMessage(), getVersion()));
+            getPlayer().sendActionBar(Main.getInstance().convertComponent(packet.getMessage(), getVersion()));
         } else {
-            getPlayer().sendMessage(Identity.nil(), Main.convertComponent(packet.getMessage(), getVersion()), MessageType.valueOf(packet.getType().name()));
+            getPlayer().sendMessage(Identity.nil(), Main.getInstance().convertComponent(packet.getMessage(), getVersion()), MessageType.valueOf(packet.getType().name()));
         }
     }
-    
+
+    /**
+     * Handles PacketPlayOutPlayerListHeaderFooter request using Velocity API
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutPlayerListHeaderFooter packet) {
-        getPlayer().getTabList().setHeaderAndFooter(Main.convertComponent(packet.getHeader(), getVersion()), Main.convertComponent(packet.getFooter(), getVersion()));
+        getPlayer().getTabList().setHeaderAndFooter(Main.getInstance().convertComponent(packet.getHeader(), getVersion()),
+                Main.getInstance().convertComponent(packet.getFooter(), getVersion()));
     }
 
+    /**
+     * Handles PacketPlayOutPlayerInfo request using Velocity API
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutPlayerInfo packet) {
         for (PlayerInfoData data : packet.getEntries()) {
             switch (packet.getAction()) {
@@ -102,7 +125,7 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
                 if (getPlayer().getTabList().containsEntry(data.getUniqueId())) continue;
                 getPlayer().getTabList().addEntry(TabListEntry.builder()
                         .tabList(getPlayer().getTabList())
-                        .displayName(Main.convertComponent(data.getDisplayName(), getVersion()))
+                        .displayName(Main.getInstance().convertComponent(data.getDisplayName(), getVersion()))
                         .gameMode(data.getGameMode().ordinal()-1)
                         .profile(new GameProfile(data.getUniqueId(), data.getName(), data.getSkin() == null ? new ArrayList<>() :
                                 Collections.singletonList(new Property("textures", data.getSkin().getValue(), data.getSkin().getSignature()))))
@@ -113,7 +136,7 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
                 getPlayer().getTabList().removeEntry(data.getUniqueId());
                 break;
             case UPDATE_DISPLAY_NAME:
-                getEntry(data.getUniqueId()).setDisplayName(Main.convertComponent(data.getDisplayName(), getVersion()));
+                getEntry(data.getUniqueId()).setDisplayName(Main.getInstance().convertComponent(data.getDisplayName(), getVersion()));
                 break;
             case UPDATE_LATENCY:
                 getEntry(data.getUniqueId()).setLatency(data.getLatency());
@@ -126,13 +149,19 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
             }
         }
     }
-    
+
+    /**
+     * Handles PacketPlayOutBoss request using Velocity API
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutBoss packet) {
         BossBar bar;
         switch (packet.getAction()) {
         case ADD:
             if (bossBars.containsKey(packet.getId())) return;
-            bar = BossBar.bossBar(Main.convertComponent(IChatBaseComponent.optimizedComponent(packet.getName()), getVersion()),
+            bar = BossBar.bossBar(Main.getInstance().convertComponent(IChatBaseComponent.optimizedComponent(packet.getName()), getVersion()),
                     packet.getPct(), 
                     Color.valueOf(packet.getColor().toString()), 
                     Overlay.valueOf(packet.getOverlay().toString()));
@@ -150,7 +179,7 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
             bossBars.get(packet.getId()).progress(packet.getPct());
             break;
         case UPDATE_NAME:
-            bossBars.get(packet.getId()).name(Main.convertComponent(IChatBaseComponent.optimizedComponent(packet.getName()), getVersion()));
+            bossBars.get(packet.getId()).name(Main.getInstance().convertComponent(IChatBaseComponent.optimizedComponent(packet.getName()), getVersion()));
             break;
         case UPDATE_STYLE:
             bar = bossBars.get(packet.getId());
@@ -168,11 +197,25 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
         }
     }
 
+    /**
+     * Handles PacketPlayOutScoreboardDisplayObjective request by forwarding the task
+     * to Bridge plugin.
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutScoreboardDisplayObjective packet) {
         ((ProxyPlatform)TAB.getInstance().getPlatform()).getPluginMessageHandler().sendMessage(this,
                 "PacketPlayOutScoreboardDisplayObjective", packet.getSlot(), packet.getObjectiveName());
     }
 
+    /**
+     * Handles PacketPlayOutScoreboardObjective request by forwarding the task
+     * to Bridge plugin.
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutScoreboardObjective packet) {
         List<Object> args = new ArrayList<>();
         args.add("PacketPlayOutScoreboardObjective");
@@ -187,6 +230,13 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
         ((ProxyPlatform)TAB.getInstance().getPlatform()).getPluginMessageHandler().sendMessage(this, args.toArray());
     }
 
+    /**
+     * Handles PacketPlayOutScoreboardScore request by forwarding the task
+     * to Bridge plugin.
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutScoreboardScore packet) {
         List<Object> args = new ArrayList<>();
         args.add("PacketPlayOutScoreboardScore");
@@ -197,6 +247,13 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
         ((ProxyPlatform)TAB.getInstance().getPlatform()).getPluginMessageHandler().sendMessage(this, args.toArray());
     }
 
+    /**
+     * Handles PacketPlayOutScoreboardTeam request by forwarding the task
+     * to Bridge plugin.
+     *
+     * @param   packet
+     *          Packet request to handle
+     */
     private void handle(PacketPlayOutScoreboardTeam packet) {
         List<Object> args = new ArrayList<>();
         args.add("PacketPlayOutScoreboardTeam");
@@ -221,18 +278,29 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
         ((ProxyPlatform)TAB.getInstance().getPlatform()).getPluginMessageHandler().sendMessage(this, args.toArray());
     }
 
+    /**
+     * Processes bossbar flag by adding or removing it based on provided value.
+     *
+     * @param   bar
+     *          Bossbar to process flag of
+     * @param   targetValue
+     *          Flag value
+     * @param   flag
+     *          Flag to process
+     */
     private void processFlag(BossBar bar, boolean targetValue, Flag flag) {
-        if (targetValue) {
-            if (!bar.hasFlag(flag)) {
-                bar.addFlag(flag);
-            }
-        } else {
-            if (bar.hasFlag(flag)) {
-                bar.removeFlag(flag);
-            }
-        }
+        if (targetValue && !bar.hasFlag(flag)) bar.addFlag(flag);
+        if (!targetValue && bar.hasFlag(flag)) bar.removeFlag(flag);
     }
-    
+
+    /**
+     * Returns tablist entry with specified UUID. If no such entry was found,
+     * a new, dummy entry is returned to avoid NPE.
+     *
+     * @param   id
+     *          UUID to get entry by
+     * @return  Tablist entry with specified UUID
+     */
     private TabListEntry getEntry(UUID id) {
         for (TabListEntry entry : getPlayer().getTabList().getEntries()) {
             if (entry.getProfile().getId().equals(id)) return entry;

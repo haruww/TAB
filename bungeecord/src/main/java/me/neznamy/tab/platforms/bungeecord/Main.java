@@ -26,22 +26,23 @@ public class Main extends Plugin {
     @Override
     public void onEnable(){
         if (!isVersionSupported()) {
-            ProxyServer.getInstance().getConsole().sendMessage(new TextComponent(EnumChatFormat.color("&c[TAB] The plugin requires BungeeCord build #1330 and up to work. Get it at https://ci.md-5.net/job/BungeeCord/")));
+            getLogger().info(EnumChatFormat.color("&cThe plugin requires BungeeCord build #1330 and up to work. Get it at https://ci.md-5.net/job/BungeeCord/"));
             return;
         }
         ProxyServer.getInstance().registerChannel(TabConstants.PLUGIN_MESSAGE_CHANNEL_NAME);
-        TAB.setInstance(new TAB(new BungeePlatform(), ProtocolVersion.PROXY, getProxy().getVersion(), getDataFolder()));
+        TAB.setInstance(new TAB(new BungeePlatform(), ProtocolVersion.PROXY, getProxy().getVersion(), getDataFolder(), getLogger()));
         getProxy().getPluginManager().registerListener(this, new BungeeEventListener());
         getProxy().getPluginManager().registerCommand(this, new BTABCommand());
         TAB.getInstance().load();
         Metrics metrics = new Metrics(this, 10535);
-        metrics.addCustomChart(new SimplePie("permission_system", () -> TAB.getInstance().getGroupManager().getPlugin().getName()));
-        metrics.addCustomChart(new SimplePie("global_playerlist_enabled", () -> TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.GLOBAL_PLAYER_LIST) ? "Yes" : "No"));
+        metrics.addCustomChart(new SimplePie(TabConstants.MetricsChart.PERMISSION_SYSTEM, () -> TAB.getInstance().getGroupManager().getPlugin().getName()));
+        metrics.addCustomChart(new SimplePie(TabConstants.MetricsChart.GLOBAL_PLAYER_LIST_ENABLED, () -> TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.GLOBAL_PLAYER_LIST) ? "Yes" : "No"));
     }
 
     /**
      * Checks for compatibility and returns true if version is supported, false if not
-     * @return true if version is compatible, false if not
+     *
+     * @return  true if version is compatible, false if not
      */
     private boolean isVersionSupported() {
         try {
@@ -58,9 +59,9 @@ public class Main extends Plugin {
     }
 
     /**
-     * TAB command for bungeecord
+     * TAB command for BungeeCord
      */
-    public static class BTABCommand extends Command implements TabExecutor {
+    private static class BTABCommand extends Command implements TabExecutor {
 
         /**
          * Constructs new instance

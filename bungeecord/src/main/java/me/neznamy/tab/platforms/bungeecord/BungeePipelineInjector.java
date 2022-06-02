@@ -7,7 +7,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import me.neznamy.tab.api.TabFeature;
 import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.util.Preconditions;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.features.PipelineInjector;
@@ -22,11 +21,15 @@ import java.util.Collection;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * Pipeline injection to secure proper functionality
+ * of some features by preventing other plugins
+ * from overriding it.
+ */
 @SuppressWarnings("unchecked")
 public class BungeePipelineInjector extends PipelineInjector {
 
-    //packets that must be deserialized and BungeeCord does not do it automatically
-
+    /** Packets used by the plugin that must be deserialized and BungeeCord does not do it automatically */
     private final Class<? extends DefinedPacket>[] extraPacketClasses = new Class[]{Team.class, ScoreboardDisplay.class, ScoreboardObjective.class};
     private final Supplier<DefinedPacket>[] extraPacketSuppliers = new Supplier[]{Team::new, ScoreboardDisplay::new, ScoreboardObjective::new};
 
@@ -47,15 +50,16 @@ public class BungeePipelineInjector extends PipelineInjector {
      */
     public class BungeeChannelDuplexHandler extends ChannelDuplexHandler {
 
-        //injected player
+        /** Injected player */
         protected final TabPlayer player;
 
         /**
          * Constructs new instance with given player
-         * @param player - player to inject
+         *
+         * @param   player
+         *          player to inject
          */
         public BungeeChannelDuplexHandler(TabPlayer player) {
-            Preconditions.checkNotNull(player, "player");
             this.player = player;
         }
 
@@ -68,7 +72,9 @@ public class BungeePipelineInjector extends PipelineInjector {
                     return;
                 case "Team":
                     if (antiOverrideTeams) {
+                        long time = System.nanoTime();
                         modifyPlayers((Team) packet);
+                        TAB.getInstance().getCPUManager().addTime("NameTags", TabConstants.CpuUsageCategory.ANTI_OVERRIDE, System.nanoTime()-time);
                     }
                     break;
                 case "ScoreboardDisplay":
@@ -91,17 +97,18 @@ public class BungeePipelineInjector extends PipelineInjector {
             try {
                 super.write(context, packet, channelPromise);
             } catch (Exception e) {
-                TAB.getInstance().getErrorManager().printError("Failed to forward packet " + packet.getClass().getSimpleName() + " to " + player.getName(), e);
+                TAB.getInstance().getErrorManager().printError(String.format("Failed to forward packet %s to %s", packet.getClass().getSimpleName(), player.getName()), e);
             }
         }
 
         /**
          * Removes all real players from packet if the packet doesn't come from TAB
-         * @param packet - packet to modify
+         *
+         * @param   packet
+         *          packet to modify
          */
         private void modifyPlayers(Team packet){
-            long time = System.nanoTime();
-            if (packet.getPlayers() == null) return;
+            if (packet.getMode() == 1 || packet.getMode() == 2 || packet.getMode() == 4) return;
             Collection<String> col = Lists.newArrayList(packet.getPlayers());
             for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
                 if (col.contains(p.getNickname()) && !((TabFeature)TAB.getInstance().getTeamManager()).isDisabledPlayer(p) &&
@@ -113,23 +120,28 @@ public class BungeePipelineInjector extends PipelineInjector {
             RedisBungeeSupport redis = (RedisBungeeSupport) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.REDIS_BUNGEE);
             if (redis != null) {
                 for (RedisPlayer p : redis.getRedisPlayers().values()) {
-                    if (col.contains(p.getName()) && !packet.getName().equals(p.getTeamName())) {
+                    if (col.contains(p.getNickName()) && !packet.getName().equals(p.getTeamName())) {
                         logTeamOverride(packet.getName(), p.getName(), p.getTeamName());
-                        col.remove(p.getName());
+                        col.remove(p.getNickName());
                     }
                 }
             }
             packet.setPlayers(col.toArray(new String[0]));
-            TAB.getInstance().getCPUManager().addTime("NameTags", TabConstants.CpuUsageCategory.ANTI_OVERRIDE, System.nanoTime()-time);
         }
     }
 
+    /**
+     * Channel duplex handler override if features using packets that must be
+     * deserialized manually are used. If they are disabled, deserialization is
+     * disabled for better performance.
+     */
     public class DeserializableBungeeChannelDuplexHandler extends BungeeChannelDuplexHandler {
 
         /**
          * Constructs new instance with given player
          *
-         * @param player - player to inject
+         * @param   player
+         *          player to inject
          */
         public DeserializableBungeeChannelDuplexHandler(TabPlayer player) {
             super(player);
@@ -139,15 +151,17 @@ public class BungeePipelineInjector extends PipelineInjector {
         public void write(ChannelHandlerContext context, Object packet, ChannelPromise channelPromise) {
             long time = System.nanoTime();
             Object modifiedPacket = packet instanceof ByteBuf ? deserialize((ByteBuf) packet) : packet;
-            TAB.getInstance().getCPUManager().addTime("Packet deserializing", TabConstants.CpuUsageCategory.BYTE_BUF, System.nanoTime()-time);
+            TAB.getInstance().getCPUManager().addTime(TabConstants.Feature.PACKET_DESERIALIZING, TabConstants.CpuUsageCategory.BYTE_BUF, System.nanoTime()-time);
             super.write(context, modifiedPacket, channelPromise);
         }
 
         /**
          * Deserializes byte buf in case it is one of the tracked packets coming from backend server and returns it.
          * If the packet is not one of them, returns input
-         * @param buf - byte buf to deserialize
-         * @return deserialized packet or input byte buf if packet is not tracked
+         *
+         * @param   buf
+         *          byte buf to deserialize
+         * @return  deserialized packet or input byte buf if packet is not tracked
          */
         private Object deserialize(ByteBuf buf) {
             int marker = buf.readerIndex();

@@ -1,7 +1,7 @@
 package me.neznamy.tab.shared.command;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.shared.TAB;
@@ -54,7 +54,7 @@ public class GroupCommand extends PropertyCommand {
             if (hasPermission(sender, TabConstants.Permission.COMMAND_DATA_REMOVE)) {
                 TAB.getInstance().getConfiguration().getGroups().remove(group);
                 for (TabPlayer pl : TAB.getInstance().getOnlinePlayers()) {
-                    if (pl.getGroup().equals(group) || "_DEFAULT_".equals(group)){
+                    if (pl.getGroup().equals(group) || TabConstants.DEFAULT_GROUP.equals(group)){
                         pl.forceRefresh();
                     }
                 }
@@ -82,20 +82,20 @@ public class GroupCommand extends PropertyCommand {
 
     private void sendGroupInfo(TabPlayer sender, String group) {
         sendMessage(sender, "&f=== Group &9" + group + "&f ===");
-        for (Map.Entry<String, String> entry : TAB.getInstance().getConfiguration().getGroups().getGlobalSettings(group).entrySet()) {
+        for (Map.Entry<String, Object> entry : TAB.getInstance().getConfiguration().getGroups().getGlobalSettings(group).entrySet()) {
             sendRawMessage(sender, "  " + entry.getKey() + ": " + entry.getValue());
         }
-        for (Map.Entry<String, Map<String, String>> entry : TAB.getInstance().getConfiguration().getGroups().getPerWorldSettings(group).entrySet()) {
+        for (Map.Entry<String, Map<String, Object>> entry : TAB.getInstance().getConfiguration().getGroups().getPerWorldSettings(group).entrySet()) {
             if (entry.getValue() == null) continue;
             sendMessage(sender, "&6World " + entry.getKey() + ":&e");
-            for (Map.Entry<String, String> properties : entry.getValue().entrySet()) {
+            for (Map.Entry<String, Object> properties : entry.getValue().entrySet()) {
                 sendRawMessage(sender, "  " + properties.getKey() + ": " + properties.getValue());
             }
         }
-        for (Map.Entry<String, Map<String, String>> entry : TAB.getInstance().getConfiguration().getGroups().getPerServerSettings(group).entrySet()) {
+        for (Map.Entry<String, Map<String, Object>> entry : TAB.getInstance().getConfiguration().getGroups().getPerServerSettings(group).entrySet()) {
             if (entry.getValue() == null) continue;
             sendMessage(sender, "&3Server " + entry.getKey() + ":&b");
-            for (Map.Entry<String, String> properties : entry.getValue().entrySet()) {
+            for (Map.Entry<String, Object> properties : entry.getValue().entrySet()) {
                 sendRawMessage(sender, "  " + properties.getKey() + ": " + properties.getValue());
             }
         }
@@ -103,10 +103,15 @@ public class GroupCommand extends PropertyCommand {
 
     /**
      * Saves new group settings into config
-     * @param sender - command sender or null if console
-     * @param group - affected group
-     * @param type - property type
-     * @param value - new value
+     *
+     * @param   sender
+     *          command sender or null if console
+     * @param   group
+     *          affected group
+     * @param   type
+     *          property type
+     * @param   value
+     *          new value
      */
     private void saveGroup(TabPlayer sender, String group, String type, String value, String server, String world){
         if (value.length() > 0){
@@ -118,9 +123,19 @@ public class GroupCommand extends PropertyCommand {
         if (property.length > 0 && String.valueOf(value.length() == 0 ? null : value).equals(String.valueOf(property[0]))) return;
         TAB.getInstance().getConfiguration().getGroups().setProperty(group, type, server, world, value.length() == 0 ? null : value);
         for (TabPlayer pl : TAB.getInstance().getOnlinePlayers()) {
-            if (pl.getGroup().equals(group) || "_DEFAULT_".equals(group)){
+            if (pl.getGroup().equals(group) || TabConstants.DEFAULT_GROUP.equals(group)){
                 pl.forceRefresh();
             }
         }
+    }
+
+    @Override
+    public List<String> complete(TabPlayer sender, String[] arguments) {
+        if (arguments.length == 1) {
+            Set<String> groups = new HashSet<>(TAB.getInstance().getConfiguration().getGroups().getAllEntries());
+            groups.add(TabConstants.DEFAULT_GROUP);
+            return groups.stream().filter(group -> group.toLowerCase().startsWith(arguments[0].toLowerCase())).collect(Collectors.toList());
+        }
+        return super.complete(sender, arguments);
     }
 }

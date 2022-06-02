@@ -20,9 +20,7 @@ import me.neznamy.tab.shared.TabConstants;
 public class CpuCommand extends SubCommand {
 
     private final DecimalFormat decimal3 = new DecimalFormat("#.###");
-
-    private static final char LINE_CHAR = (char)9553;
-    private static final String SEPARATOR = "&8&l" + LINE_CHAR + "&8&m                                                    ";
+    private final char LINE_CHAR = (char)9553;
 
     /**
      * Constructs new instance
@@ -33,6 +31,7 @@ public class CpuCommand extends SubCommand {
 
     @Override
     public void execute(TabPlayer sender, String[] args) {
+        String SEPARATOR = "&8&l" + LINE_CHAR + "&8&m                                                    ";
         TAB tab = TAB.getInstance();
         Map<String, Float> placeholders = tab.getCPUManager().getPlaceholderUsage();
         double placeholdersTotal = placeholders.values().stream().mapToDouble(Float::floatValue).sum();
@@ -77,7 +76,7 @@ public class CpuCommand extends SubCommand {
             if (printCounter++ == 5) break;
             String refresh = "";
             Placeholder p = TAB.getInstance().getPlaceholderManager().getPlaceholder(entry.getKey());
-            if (p != null && !p.isTriggerMode()) refresh = " &8(" + p.getRefresh() + ")&7";
+            if (p != null && p.getRefresh() != -1) refresh = " &8(" + p.getRefresh() + ")&7";
             String colorized = entry.getKey().startsWith("%sync:") ? "&c" + decimal3.format(entry.getValue()) : colorize(decimal3.format(entry.getValue()), 1, 0.3f);
             sendMessage(sender, String.format("&8&l%s &7%s - %s%%", LINE_CHAR, entry.getKey() + refresh, colorized));
         }
@@ -90,7 +89,7 @@ public class CpuCommand extends SubCommand {
     }
 
     public void sendToConsole(Map<String, Map<String, Float>> features) {
-        TAB.getInstance().getPlatform().sendConsoleMessage("&8&l" + LINE_CHAR + " &6Features:", true);
+        TAB.getInstance().sendConsoleMessage("&8&l" + LINE_CHAR + " &6Features:", true);
         for (Entry<String, Map<String, Float>> entry : features.entrySet()) {
             double featureTotal = entry.getValue().values().stream().mapToDouble(Float::floatValue).sum();
             String core = String.format("&8&l%s &7%s &7(%s%%&7):", LINE_CHAR, entry.getKey(), colorize(decimal3.format(featureTotal), 5, 1));
@@ -98,9 +97,9 @@ public class CpuCommand extends SubCommand {
             for (Entry<String, Float> type : entry.getValue().entrySet()){
                 messages.add(String.format("&8&l%s     &7%s - %s%%", LINE_CHAR, type.getKey(), colorize(decimal3.format(type.getValue()), 5, 1)));
             }
-            TAB.getInstance().getPlatform().sendConsoleMessage(core, true);
+            TAB.getInstance().sendConsoleMessage(core, true);
             for (String message : messages) {
-                TAB.getInstance().getPlatform().sendConsoleMessage(message, true);
+                TAB.getInstance().sendConsoleMessage(message, true);
             }
         }
     }
@@ -126,9 +125,9 @@ public class CpuCommand extends SubCommand {
         for (Entry<String, AtomicInteger> entry : packets.entrySet()) {
             messages.add("&8&l" + LINE_CHAR + "     &7" + entry.getKey() + " - " + entry.getValue());
         }
-        TAB.getInstance().getPlatform().sendConsoleMessage("&8&l" + LINE_CHAR + " &r&7Packets sent by the plugin: " + packets.values().stream().mapToInt(AtomicInteger::get).sum(), true);
+        TAB.getInstance().sendConsoleMessage("&8&l" + LINE_CHAR + " &r&7Packets sent by the plugin: " + packets.values().stream().mapToInt(AtomicInteger::get).sum(), true);
         for (String message : messages) {
-            TAB.getInstance().getPlatform().sendConsoleMessage(message, true);
+            TAB.getInstance().sendConsoleMessage(message, true);
         }
     }
 
@@ -145,8 +144,10 @@ public class CpuCommand extends SubCommand {
 
     /**
      * Returns colored usage from provided usage
-     * @param usage - usage
-     * @return colored usage
+     *
+     * @param   usage
+     *          usage
+     * @return  colored usage
      */
     private String colorize(String usage, float threshold1, float threshold2) {
         float percent = Float.parseFloat(usage.replace(",", "."));

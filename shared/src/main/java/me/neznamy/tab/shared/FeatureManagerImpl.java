@@ -57,10 +57,10 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls refresh(TabPlayer, boolean) on all features
      * 
-     * @param    refreshed
-     *             player to refresh
-     * @param    force
-     *             whether refresh should be forced or not
+     * @param   refreshed
+     *          player to refresh
+     * @param   force
+     *          whether refresh should be forced or not
      */
     public void refresh(TabPlayer refreshed, boolean force) {
         for (TabFeature f : values) f.refresh(refreshed, force);
@@ -69,13 +69,13 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onPlayerInfo(TabPlayer, Object) on all features
      * 
-     * @param    receiver
-     *             packet receiver
-     * @param    packet
-     *             an instance of custom packet class PacketPlayOutPlayerInfo
-     * @return    altered rebuilt packet
-     * @throws    ReflectiveOperationException
-     *             if reflective operation fails
+     * @param   receiver
+     *          packet receiver
+     * @param   packet
+     *          an instance of custom packet class PacketPlayOutPlayerInfo
+     * @return  altered rebuilt packet
+     * @throws  ReflectiveOperationException
+     *          if reflective operation fails
      */
     public Object onPacketPlayOutPlayerInfo(TabPlayer receiver, Object packet) throws ReflectiveOperationException {
         if (receiver.getVersion().getMinorVersion() < 8) return packet;
@@ -97,8 +97,8 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onQuit(TabPlayer) on all features
      * 
-     * @param    disconnectedPlayer
-     *             player who disconnected
+     * @param   disconnectedPlayer
+     *          player who disconnected
      */
     public void onQuit(TabPlayer disconnectedPlayer) {
         if (disconnectedPlayer == null) return;
@@ -116,19 +116,23 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onJoin(TabPlayer) on all features
      * 
-     * @param    connectedPlayer
-     *             player who connected
+     * @param   connectedPlayer
+     *          player who connected
      */
     public void onJoin(TabPlayer connectedPlayer) {
         if (!connectedPlayer.isOnline()) return;
         long millis = System.currentTimeMillis();
         TAB.getInstance().addPlayer(connectedPlayer);
         for (TabFeature f : values) {
-            if (!f.overridesMethod("onJoin")) continue;
-            long time = System.nanoTime();
-            f.onJoin(connectedPlayer);
-            TAB.getInstance().getCPUManager().addTime(f, TabConstants.CpuUsageCategory.PLAYER_JOIN, System.nanoTime()-time);
-            TAB.getInstance().debug("Feature " + f.getClass().getSimpleName() + " processed player join in " + (System.nanoTime()-time)/1000000 + "ms");
+            try {
+                if (!f.overridesMethod("onJoin")) continue;
+                long time = System.nanoTime();
+                f.onJoin(connectedPlayer);
+                TAB.getInstance().getCPUManager().addTime(f, TabConstants.CpuUsageCategory.PLAYER_JOIN, System.nanoTime()-time);
+                TAB.getInstance().debug("Feature " + f.getClass().getSimpleName() + " processed player join in " + (System.nanoTime()-time)/1000000 + "ms");
+            } catch (Throwable e) {
+                TAB.getInstance().getErrorManager().criticalError("Feature " + f.getClass().getSimpleName() + " failed to process player " + connectedPlayer.getName(), e);
+            }
         }
         ((ITabPlayer)connectedPlayer).markAsLoaded(true);
         TAB.getInstance().debug("Player join of " + connectedPlayer.getName() + " processed in " + (System.currentTimeMillis()-millis) + "ms");
@@ -141,10 +145,10 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onWorldChange(TabPlayer, String, String) on all features
      * 
-     * @param    playerUUID
-     *             player who switched world
-     * @param    to
-     *             name of the new world
+     * @param   playerUUID
+     *          player who switched world
+     * @param   to
+     *          name of the new world
      */
     public void onWorldChange(UUID playerUUID, String to) {
         TabPlayer changed = TAB.getInstance().getPlayer(playerUUID);
@@ -157,41 +161,41 @@ public class FeatureManagerImpl implements FeatureManager {
             f.onWorldChange(changed, from, to);
             TAB.getInstance().getCPUManager().addTime(f, TabConstants.CpuUsageCategory.WORLD_SWITCH, System.nanoTime()-time);
         }
-        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder("%world%")).updateValue(changed, to);
+        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.WORLD)).updateValue(changed, to);
     }
 
     /**
      * Calls onServerChange(TabPlayer, String, String) on all features
      * 
-     * @param    playerUUID
-     *             player who switched server
-     * @param    to
-     *             name of the new server
+     * @param   playerUUID
+     *          player who switched server
+     * @param   to
+     *          name of the new server
      */
     public void onServerChange(UUID playerUUID, String to) {
         TabPlayer changed = TAB.getInstance().getPlayer(playerUUID);
         if (changed == null) return;
         String from = changed.getServer();
         ((ITabPlayer)changed).setServer(to);
-        if (!isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) ((ITabPlayer)changed).clearRegisteredObjectives();
         ((ProxyTabPlayer)changed).sendJoinPluginMessage();
+        if (!isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) onLoginPacket(changed);
         for (TabFeature f : values) {
             if (!f.overridesMethod("onServerChange")) continue;
             long time = System.nanoTime();
             f.onServerChange(changed, from, to);
             TAB.getInstance().getCPUManager().addTime(f, TabConstants.CpuUsageCategory.SERVER_SWITCH, System.nanoTime()-time);
         }
-        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder("%server%")).updateValue(changed, to);
+        ((PlayerPlaceholder)TAB.getInstance().getPlaceholderManager().getPlaceholder(TabConstants.Placeholder.SERVER)).updateValue(changed, to);
     }
 
     /**
      * Calls onCommand(TabPlayer, String) on all features
      * 
-     * @param    sender
-     *             command sender
-     * @param    command
-     *             command line including /
-     * @return    {@code true} if command should be cancelled, {@code false} if not
+     * @param   sender
+     *          command sender
+     * @param   command
+     *          command line including /
+     * @return  {@code true} if command should be cancelled, {@code false} if not
      */
     public boolean onCommand(TabPlayer sender, String command) {
         if (sender == null) return false;
@@ -208,11 +212,11 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onPacketReceive(TabPlayer, Object) on all features
      * 
-     * @param    sender
-     *             packet sender
-     * @param    packet
-     *             IN packet coming from player
-     * @return    {@code true} if packet should be cancelled, {@code false} if not
+     * @param   sender
+     *          packet sender
+     * @param   packet
+     *          IN packet coming from player
+     * @return  {@code true} if packet should be cancelled, {@code false} if not
      */
     public boolean onPacketReceive(TabPlayer sender, Object packet){
         boolean cancel = false;
@@ -232,10 +236,10 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onPacketSend(TabPlayer, Object) on all features
      * 
-     * @param    receiver
-     *             packet receiver
-     * @param    packet
-     *             OUT packet coming from the server
+     * @param   receiver
+     *          packet receiver
+     * @param   packet
+     *          OUT packet coming from the server
      */
     public void onPacketSend(TabPlayer receiver, Object packet){
         for (TabFeature f : values) {
@@ -253,8 +257,8 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onLoginPacket(TabPlayer) on all features
      *
-     * @param    packetReceiver
-     *             player who received the packet
+     * @param   packetReceiver
+     *          player who received the packet
      */
     public void onLoginPacket(TabPlayer packetReceiver) {
         ((ITabPlayer)packetReceiver).clearRegisteredObjectives();
@@ -269,12 +273,12 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onDisplayObjective(TabPlayer, PacketPlayOutScoreboardDisplayObjective) on all features
      *
-     * @param    packetReceiver
-     *             player who received the packet
-     * @param    packet
-     *             the packet
-     * @throws    ReflectiveOperationException
-     *             if reflective operation fails
+     * @param   packetReceiver
+     *          player who received the packet
+     * @param   packet
+     *          the packet
+     * @throws  ReflectiveOperationException
+     *          if reflective operation fails
      */
     public void onDisplayObjective(TabPlayer packetReceiver, Object packet) throws ReflectiveOperationException {
         long time = System.nanoTime();
@@ -291,10 +295,10 @@ public class FeatureManagerImpl implements FeatureManager {
     /**
      * Calls onObjective(TabPlayer, PacketPlayOutScoreboardObjective) on all features
      *
-     * @param    packetReceiver
-     *             player who received the packet
-     * @throws    ReflectiveOperationException
-     *             if reflective operation fails
+     * @param   packetReceiver
+     *          player who received the packet
+     * @throws  ReflectiveOperationException
+     *          if reflective operation fails
      */
     public void onObjective(TabPlayer packetReceiver, Object packet) throws ReflectiveOperationException {
         long time = System.nanoTime();

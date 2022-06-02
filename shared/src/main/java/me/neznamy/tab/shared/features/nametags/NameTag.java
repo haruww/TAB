@@ -3,10 +3,12 @@ package me.neznamy.tab.shared.features.nametags;
 import java.util.*;
 
 import me.neznamy.tab.api.Property;
+import me.neznamy.tab.api.ProtocolVersion;
 import me.neznamy.tab.api.TabFeature;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.protocol.PacketPlayOutScoreboardTeam;
 import me.neznamy.tab.api.team.TeamManager;
+import me.neznamy.tab.api.util.Preconditions;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.ITabPlayer;
 import me.neznamy.tab.shared.TAB;
@@ -27,14 +29,13 @@ public class NameTag extends TabFeature implements TeamManager {
     private final WeakHashMap<TabPlayer, String> forcedTeamName = new WeakHashMap<>();
     protected final Set<TabPlayer> playersWithInvisibleNameTagView = Collections.newSetFromMap(new WeakHashMap<>());
 
-    private final boolean accepting18x = TAB.getInstance().getPlatform().isProxy() ||
+    private final boolean accepting18x = TAB.getInstance().getServerVersion() == ProtocolVersion.PROXY ||
             TAB.getInstance().getPlatform().getPluginVersion("ViaRewind") != null ||
             TAB.getInstance().getPlatform().getPluginVersion("ProtocolSupport") != null ||
             TAB.getInstance().getServerVersion().getMinorVersion() == 8;
 
     public NameTag() {
-        super("NameTags", "Updating prefix/suffix", TAB.getInstance().getConfiguration().getConfig().getStringList("scoreboard-teams.disable-in-servers"),
-                TAB.getInstance().getConfiguration().getConfig().getStringList("scoreboard-teams.disable-in-worlds"));
+        super("NameTags", "Updating prefix/suffix", "scoreboard-teams");
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.SORTING, sorting);
         if (accepting18x) TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.NAME_TAGS_VISIBILITY, new VisibilityRefresher(this));
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.NAME_TAGS_COLLISION, collisionManager);
@@ -123,8 +124,6 @@ public class NameTag extends TabFeature implements TeamManager {
     @Override
     public void onServerChange(TabPlayer p, String from, String to) {
         onWorldChange(p, null, null);
-        if (TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) return;
-        onLoginPacket(p);
     }
 
     @Override
@@ -239,7 +238,7 @@ public class NameTag extends TabFeature implements TeamManager {
             String currentPrefix = tagPrefix.getFormat(viewer);
             String currentSuffix = tagSuffix.getFormat(viewer);
             boolean visible = getTeamVisibility(p, viewer);
-            viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 0), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
+            viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
         }
         RedisSupport redis = (RedisSupport) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.REDIS_BUNGEE);
         if (redis != null) redis.updateNameTag(p, p.getProperty(TabConstants.Property.TAGPREFIX).get(), p.getProperty(TabConstants.Property.TAGSUFFIX).get());
@@ -249,7 +248,7 @@ public class NameTag extends TabFeature implements TeamManager {
         boolean visible = getTeamVisibility(p, viewer);
         String currentPrefix = p.getProperty(TabConstants.Property.TAGPREFIX).getFormat(viewer);
         String currentSuffix = p.getProperty(TabConstants.Property.TAGSUFFIX).getFormat(viewer);
-        viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 0), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
+        viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
     }
 
     public void unregisterTeam(TabPlayer p) {
@@ -269,11 +268,8 @@ public class NameTag extends TabFeature implements TeamManager {
         if (hasTeamHandlingPaused(p)) return;
         String replacedPrefix = p.getProperty(TabConstants.Property.TAGPREFIX).getFormat(viewer);
         String replacedSuffix = p.getProperty(TabConstants.Property.TAGSUFFIX).getFormat(viewer);
-        if (viewer.getVersion().getMinorVersion() >= 8 && TAB.getInstance().getConfiguration().isUnregisterBeforeRegister()) {
-            viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName()), TabConstants.PacketCategory.NAMETAGS_TEAM_UNREGISTER);
-        }
         viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), replacedPrefix, replacedSuffix, translate(getTeamVisibility(p, viewer)), 
-                translate(collisionManager.getCollision(p)), Collections.singletonList(p.getNickname()), 0), TabConstants.PacketCategory.NAMETAGS_TEAM_REGISTER);
+                translate(collisionManager.getCollision(p)), Collections.singletonList(p.getNickname()), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_REGISTER);
     }
 
     private void updateTeam(TabPlayer p) {
@@ -317,45 +313,53 @@ public class NameTag extends TabFeature implements TeamManager {
 
     @Override
     public void setPrefix(TabPlayer player, String prefix) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TAGPREFIX).setTemporaryValue(prefix);
         updateTeamData(player);
     }
 
     @Override
     public void setSuffix(TabPlayer player, String suffix) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TAGSUFFIX).setTemporaryValue(suffix);
         updateTeamData(player);
     }
 
     @Override
     public void resetPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TAGPREFIX).setTemporaryValue(null);
         updateTeamData(player);
     }
 
     @Override
     public void resetSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         player.getProperty(TabConstants.Property.TAGSUFFIX).setTemporaryValue(null);
         updateTeamData(player);
     }
 
     @Override
     public String getCustomPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TAGPREFIX).getTemporaryValue();
     }
 
     @Override
     public String getCustomSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TAGSUFFIX).getTemporaryValue();
     }
 
     @Override
     public String getOriginalPrefix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TAGPREFIX).getOriginalRawValue();
     }
 
     @Override
     public String getOriginalSuffix(TabPlayer player) {
+        Preconditions.checkLoaded(player);
         return player.getProperty(TabConstants.Property.TAGSUFFIX).getOriginalRawValue();
     }
 

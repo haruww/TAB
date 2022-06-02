@@ -27,11 +27,6 @@ public class BukkitTabExpansion extends PlaceholderExpansion implements TabExpan
     }
 
     @Override
-    public boolean canRegister(){
-        return true;
-    }
-
-    @Override
     public @NotNull String getAuthor(){
         return "NEZNAMY";
     }
@@ -48,48 +43,22 @@ public class BukkitTabExpansion extends PlaceholderExpansion implements TabExpan
 
     @Override
     public String onPlaceholderRequest(Player player, @NotNull String identifier){
-        if (player == null) return "";
-        TabPlayer p = TAB.getInstance().getPlayer(player.getUniqueId());
         if (identifier.startsWith("replace_")) {
             String placeholder = "%" + identifier.substring(8) + "%";
             String output = PlaceholderAPI.setPlaceholders(player, placeholder);
             return TAB.getInstance().getPlaceholderManager().findReplacement(placeholder, output);
         }
-        return values.computeIfAbsent(p, pl -> new HashMap<>()).get(identifier);
+        if (identifier.startsWith("placeholder_")) {
+            TAB.getInstance().getPlaceholderManager().addUsedPlaceholder("%" + identifier.substring(12) + "%", TAB.getInstance().getPlaceholderManager());
+        }
+        if (player == null) return "<Player cannot be null>";
+        TabPlayer p = TAB.getInstance().getPlayer(player.getUniqueId());
+        if (p == null || !p.isLoaded()) return "<Player is not loaded>";
+        return values.get(p).get(identifier);
     }
 
     @Override
-    public void setScoreboardVisible(TabPlayer player, boolean visible) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put("scoreboard_visible", visible ? "Enabled" : "Disabled");
-    }
-
-    @Override
-    public void setScoreboardName(TabPlayer player, String name) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put("scoreboard_name", name);
-    }
-
-    @Override
-    public void setBossBarVisible(TabPlayer player, boolean visible) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put("bossbar_visible", visible ? "Enabled" : "Disabled");
-    }
-
-    @Override
-    public void setNameTagPreview(TabPlayer player, boolean previewing) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put("ntpreview", previewing ? "Enabled" : "Disabled");
-    }
-
-    @Override
-    public void setPlaceholderValue(TabPlayer player, String placeholder, String value) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put("placeholder_" + placeholder.substring(1, placeholder.length()-1), value);
-    }
-
-    @Override
-    public void setPropertyValue(TabPlayer player, String property, String value) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put(property, value);
-    }
-
-    @Override
-    public void setRawPropertyValue(TabPlayer player, String property, String value) {
-        values.computeIfAbsent(player, p -> new HashMap<>()).put(property + "_raw", value);
+    public void setValue(TabPlayer player, String key, String value) {
+        values.computeIfAbsent(player, p -> new HashMap<>()).put(key, value);
     }
 }

@@ -31,13 +31,15 @@ public class PlaceholderReplacementPattern {
     /**
      * Constructs new instance from given replacement map from config
      *
-     * @param    map
-     *             replacement map from config
+     * @param   identifier
+     *          placeholder identifier which this pattern belongs to
+     * @param   map
+     *          replacement map from config
      */
-    public PlaceholderReplacementPattern(Map<Object, Object> map) {
+    public PlaceholderReplacementPattern(String identifier, Map<Object, Object> map) {
         for (Entry<Object, Object> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
-            String value = String.valueOf(entry.getValue());
+            String value = String.valueOf(entry.getValue()).replace(identifier, "%value%");
             replacements.put(EnumChatFormat.color(key), EnumChatFormat.color(value));
             nestedPlaceholders.addAll(TAB.getInstance().getPlaceholderManager().detectPlaceholders(value));
             nestedPlaceholders.remove("%value%"); //not a real placeholder
@@ -48,11 +50,11 @@ public class PlaceholderReplacementPattern {
                 replacements.put("no", value);
             } else if (key.contains("-")) {
                 try {
-                    numberIntervals.put(new float[]{Float.parseFloat(key.split("-")[0]),
-                            Float.parseFloat(key.split("-")[1])}, value);
-                } catch (NumberFormatException e) {
-                    //not a valid number interval
-                }
+                    numberIntervals.put(new float[]{Float.parseFloat(key.split("-")[0]), Float.parseFloat(key.split("-")[1])}, value);
+                } catch (NumberFormatException ignored) {}
+                try {
+                    numberIntervals.put(new float[]{Float.parseFloat(key.split("~")[0]), Float.parseFloat(key.split("~")[1])}, value);
+                } catch (NumberFormatException ignored) {}
             }
         }
     }
@@ -61,7 +63,7 @@ public class PlaceholderReplacementPattern {
      * Returns set of all nested placeholders used inside placeholder output
      * replacement values in all lines.
      *
-     * @return    All used nested placeholders in values.
+     * @return  All used nested placeholders in values.
      */
     public Set<String> getNestedPlaceholders() {
         return nestedPlaceholders;
@@ -71,9 +73,9 @@ public class PlaceholderReplacementPattern {
      * Finds replacement using provided output as well as applying
      * %value% placeholder for original output inside replacements.
      *
-     * @param    output
-     *             placeholder's output
-     * @return    replacement or {@code output} if no pattern is matching
+     * @param   output
+     *          placeholder's output
+     * @return  replacement or {@code output} if no pattern is matching
      */
     public String findReplacement(String output) {
         String replacement = findReplacement0(output);
@@ -88,9 +90,9 @@ public class PlaceholderReplacementPattern {
      * Internal method that returns value based on provided
      * placeholder output and configured replacements.
      *
-     * @param    output
-     *             placeholder's output
-     * @return    replacement or {@code output} if no pattern is matching
+     * @param   output
+     *          placeholder's output
+     * @return  replacement or {@code output} if no pattern is matching
      */
     private String findReplacement0(String output) {
         //skipping check if no replacements are defined

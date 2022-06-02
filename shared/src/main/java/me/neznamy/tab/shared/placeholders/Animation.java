@@ -39,12 +39,12 @@ public class Animation {
      * Constructs new instance with given arguments which are fixed if necessary, such as when
      * refresh is not divisible by 50
      *
-     * @param    name
-     *             animation's name
-     * @param    list
-     *             list of animation frames
-     * @param    interval
-     *             change interval to next frame
+     * @param   name
+     *          animation's name
+     * @param   list
+     *          list of animation frames
+     * @param   interval
+     *          change interval to next frame
      */
     public Animation(String name, List<String> list, int interval){
         this.name = name;
@@ -53,7 +53,7 @@ public class Animation {
         int refresh = this.interval;
         List<String> nestedPlaceholders0 = new ArrayList<>();
         for (int i=0; i<messages.length; i++) {
-            messages[i] = RGBUtils.getInstance().applyFormats(messages[i], true);
+            messages[i] = RGBUtils.getInstance().applyCleanGradients(messages[i]);
             messages[i] = EnumChatFormat.color(messages[i]);
             nestedPlaceholders0.addAll(TAB.getInstance().getPlaceholderManager().detectPlaceholders(messages[i]));
         }
@@ -79,7 +79,7 @@ public class Animation {
     /**
      * Returns current up-to-date message depending on current system time
      *
-     * @return    current message
+     * @return  current message
      */
     public String getMessage(){
         return messages[(((TAB.getInstance().getPlaceholderManager().getLoopTime().get())%(messages.length*interval))/interval)];
@@ -88,7 +88,7 @@ public class Animation {
     /**
      * Returns animation's name
      *
-     * @return    animation's name
+     * @return  animation's name
      */
     public String getName(){
         return name;
@@ -98,7 +98,7 @@ public class Animation {
      * Returns refresh interval how often should the placeholder created
      * from this animation refresh including nested placeholders
      *
-     * @return    refresh interval
+     * @return  refresh interval
      */
     public int getRefresh() {
         return refresh;
@@ -107,7 +107,7 @@ public class Animation {
     /**
      * Returns array of all nested placeholders used in all frames
      *
-     * @return    all nested placeholders in all frames
+     * @return  all nested placeholders in all frames
      */
     public String[] getNestedPlaceholders() {
         return nestedPlaceholders;

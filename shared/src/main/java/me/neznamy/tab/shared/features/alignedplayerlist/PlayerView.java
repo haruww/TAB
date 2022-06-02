@@ -70,17 +70,18 @@ public class PlayerView {
     }
 
     public synchronized IChatBaseComponent formatName(TabPlayer target) {
-        if (!playerWidths.containsKey(target)) return null; //in packet reader, not loaded yet, will send packet after loading player
+        Integer width = playerWidths.get(target);
+        if (width == null) return null; //in packet reader, not loaded yet, will send packet after loading player
         String prefixAndName = target.getProperty(TabConstants.Property.TABPREFIX).getFormat(viewer) +
                 target.getProperty(TabConstants.Property.CUSTOMTABNAME).getFormat(viewer);
         String suffix = target.getProperty(TabConstants.Property.TABSUFFIX).getFormat(viewer);
         if (suffix.length() == 0) return IChatBaseComponent.optimizedComponent(prefixAndName);
-        if ((target.isVanished() && !canSeeVanished) || playerWidths.get(target) > maxWidth) {
+        if ((target.isVanished() && !canSeeVanished) || width > maxWidth) {
             //tab sending packets for vanished players or player just unvanished
             return IChatBaseComponent.optimizedComponent(prefixAndName + suffix);
         }
         StringBuilder newFormat = new StringBuilder(prefixAndName).append(EnumChatFormat.RESET.getFormat());
-        int length = maxWidth + 12 - playerWidths.get(target);
+        int length = maxWidth + 12 - width;
         try {
             newFormat.append(buildSpaces(length));
         } catch (IllegalArgumentException e) {
@@ -93,9 +94,12 @@ public class PlayerView {
      * Returns a combination of normal and bold spaces to build exactly the requested amount of pixels.
      * Must be at least 12 as lower numbers cannot always be built using numbers 4 (normal space + 1 pixel) and 5 (bold space + 1 pixel)
      * Returns the result string with normal then bold spaces, such as "   &l   &r"
-     * @param pixelWidth - amount of pixels to be built
-     * @return string consisting of spaces and &l &r
-     * @throws IllegalArgumentException if pixelWidth is < 12
+     *
+     * @param   pixelWidth
+     *          amount of pixels to be built
+     * @return  string consisting of spaces and &l &r
+     * @throws  IllegalArgumentException
+     *          if pixelWidth is < 12
      */
     private String buildSpaces(int pixelWidth) {
         if (pixelWidth < 12) throw new IllegalArgumentException("Cannot build space lower than 12 pixels wide");
@@ -176,7 +180,7 @@ public class PlayerView {
         TabPlayer newMaxPlayer = null;
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             if (all == ignoredPlayer) continue;
-            if (all.isVanished() && !canSeeVanished) continue;
+            if (all.isVanished() && !canSeeVanished && all != viewer) continue;
             int localWidth = playerWidths.get(all);
             if (localWidth > newMaxWidth) {
                 newMaxWidth = localWidth;

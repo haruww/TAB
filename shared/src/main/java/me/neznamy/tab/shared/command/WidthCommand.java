@@ -170,9 +170,12 @@ public class WidthCommand extends SubCommand {
 
     /**
      * Returns line of text with characters that build specified text width
-     * @param width - with to display
-     * @param c - character to set click action to
-     * @return line of text with characters that build specified text width
+     *
+     * @param   width
+     *          with to display
+     * @param   c
+     *          character to set click action to
+     * @return  line of text with characters that build specified text width
      */
     private IChatBaseComponent getText(int width, int c) {
         StringBuilder text = new StringBuilder();
@@ -204,10 +207,8 @@ public class WidthCommand extends SubCommand {
             } else {
                 suggestions.add("<amount>");
             }
-        } else if (arguments.length == 3) {
-            if (arguments[0].equalsIgnoreCase("set")) {
-                suggestions.add("<new width>");
-            }
+        } else if (arguments.length == 3 && arguments[0].equalsIgnoreCase("set")) {
+            suggestions.add("<new width>");
         }
         return getStartingArgument(suggestions, arguments[arguments.length - 1]);
     }

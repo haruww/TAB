@@ -62,7 +62,7 @@ public class PlaceholderManagerImpl extends TabFeature implements PlaceholderMan
         Map<TabPlayer, Set<TabFeature>> forceUpdate = new HashMap<>(size);
         boolean somethingChanged = false;
         for (Placeholder placeholder : usedPlaceholders) {
-            if (placeholder.getRefresh() == -1 || placeholder.isTriggerMode() || loopTime % placeholder.getRefresh() != 0) continue;
+            if (placeholder.getRefresh() == -1 || loopTime % placeholder.getRefresh() != 0) continue;
             if (placeholder instanceof RelationalPlaceholderImpl && updateRelationalPlaceholder((RelationalPlaceholderImpl) placeholder, forceUpdate)) somethingChanged = true;
             if (placeholder instanceof PlayerPlaceholderImpl && updatePlayerPlaceholder((PlayerPlaceholderImpl) placeholder, update)) somethingChanged = true;
             if (placeholder instanceof ServerPlaceholderImpl && updateServerPlaceholder((ServerPlaceholderImpl) placeholder, update)) somethingChanged = true;
@@ -119,8 +119,7 @@ public class PlaceholderManagerImpl extends TabFeature implements PlaceholderMan
         long startTime = System.nanoTime();
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             if (placeholder.update(all)) {
-                if (tabExpansion != null) tabExpansion.setPlaceholderValue(all, placeholder.getIdentifier(), placeholder.getLastValue(all));
-                if (placeholder.getIdentifier().equals("%vanished%")) TAB.getInstance().getFeatureManager().onVanishStatusChange(all);
+                if (placeholder.getIdentifier().equals(TabConstants.Placeholder.VANISHED)) TAB.getInstance().getFeatureManager().onVanishStatusChange(all);
                 update.computeIfAbsent(all, k -> new HashSet<>()).addAll(placeholderUsage.get(placeholder.getIdentifier()));
                 somethingChanged = true;
             }
@@ -135,7 +134,6 @@ public class PlaceholderManagerImpl extends TabFeature implements PlaceholderMan
         if (placeholder.update()) {
             somethingChanged = true;
             for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
-                if (tabExpansion != null) tabExpansion.setPlaceholderValue(all, placeholder.getIdentifier(), placeholder.getLastValue(null));
                 update.computeIfAbsent(all, k -> new HashSet<>()).addAll(placeholderUsage.get(placeholder.getIdentifier()));
             }
         }
@@ -252,12 +250,19 @@ public class PlaceholderManagerImpl extends TabFeature implements PlaceholderMan
                     tabExpansion.setPlaceholderValue(all, p.getIdentifier(), p.getLastValue(all));
                 }
             }
-            if (p.getRefresh() % 50 == 0 && p.getRefresh() > 0 && refreshTask.getInterval() > p.getRefresh() && !p.isTriggerMode()) {
-                TAB.getInstance().debug("Decreasing refresh interval of placeholder refreshing task to " + p.getRefresh() + "ms due to placeholder " + identifier);
-                refreshTask.setInterval(p.getRefresh());
-                atomic.set(0);
-            } 
+            if (p.getRefresh() % 50 == 0 && p.getRefresh() > 0) {
+                int refresh = gcd(p.getRefresh(), refreshTask.getInterval());
+                if (refreshTask.getInterval() != refresh) {
+                    TAB.getInstance().debug("Decreasing refresh interval of placeholder refreshing task to " + refresh + "ms due to placeholder " + identifier);
+                    refreshTask.setInterval(refresh);
+                    atomic.set(0);
+                }
+            }
         }
+    }
+
+    private int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
     }
     
     public void recalculateUsedPlaceholders() {
@@ -288,5 +293,15 @@ public class PlaceholderManagerImpl extends TabFeature implements PlaceholderMan
 
     public void setTabExpansion(TabExpansion tabExpansion) {
         this.tabExpansion = tabExpansion;
+    }
+
+    @Override
+    public void onJoin(TabPlayer connectedPlayer) {
+        if (tabExpansion == null) return;
+        for (Placeholder p : usedPlaceholders) {
+            if (p instanceof ServerPlaceholder) { // server placeholders don't update on join
+                tabExpansion.setPlaceholderValue(connectedPlayer, p.getIdentifier(), ((ServerPlaceholder) p).getLastValue());
+            }
+        }
     }
 }

@@ -77,9 +77,11 @@ public class StaticLine extends ScoreboardLine {
 
     @Override
     public void setText(String text) {
-        setValues(text);
         for (TabPlayer p : parent.getPlayers()) {
             unregister(p);
+        }
+        setValues(text);
+        for (TabPlayer p : parent.getPlayers()) {
             register(p);
         }
     }

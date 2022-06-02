@@ -3,6 +3,7 @@ package me.neznamy.tab.shared.command;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.neznamy.tab.api.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
 
 /**
@@ -12,10 +13,14 @@ public class DisabledCommand {
 
     /**
      * Performs command and return messages to be sent back
-     * @param args - command arguments
-     * @param hasReloadPermission - if player has permission to reload or not
-     * @param hasAdminPermission - if player has admin permission or not
-     * @return list of messages to send back
+     *
+     * @param   args
+     *          command arguments
+     * @param   hasReloadPermission
+     *          if player has permission to reload or not
+     * @param   hasAdminPermission
+     *          if player has admin permission or not
+     * @return  list of messages to send back
      */
     public List<String> execute(String[] args, boolean hasReloadPermission, boolean hasAdminPermission) {
         List<String> messages = new ArrayList<>();
@@ -28,7 +33,7 @@ public class DisabledCommand {
             }
         } else {
             if (hasAdminPermission) {
-                String command = !TAB.getInstance().getPlatform().isProxy() ? "/tab" : "/btab";
+                String command = TAB.getInstance().getServerVersion() != ProtocolVersion.PROXY ? "/tab" : "/btab";
                 messages.add("&m                                                                                ");
                 messages.add(" &cPlugin is disabled due to an error. Check console for more details.");
                 messages.add(" &8>> &3&l" + command + " reload");

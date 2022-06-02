@@ -31,8 +31,8 @@ public class VehicleRefresher extends TabFeature {
         TAB.getInstance().getCPUManager().startRepeatingMeasuredTask(50,
                 this, TabConstants.CpuUsageCategory.PROCESSING_PLAYER_MOVEMENT, () -> {
                     for (TabPlayer inVehicle : playersInVehicle.keySet()) {
+                        if (!inVehicle.isOnline() || feature.getArmorStandManager(inVehicle) == null) continue; // not removed from WeakHashMap yet
                         feature.getArmorStandManager(inVehicle).teleport();
-//                        feature.getVehicleManager().processPassengers((Entity) inVehicle.getPlayer());
                     }
                     for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
                         if (feature.isPreviewingNametag(p)) {
@@ -40,8 +40,8 @@ public class VehicleRefresher extends TabFeature {
                         }
                     }
         });
-        addUsedPlaceholders(Collections.singletonList("%vehicle%"));
-        TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder("%vehicle%", 100, p -> ((Player)p.getPlayer()).getVehicle() == null ? "" : ((Player)p.getPlayer()).getVehicle());
+        addUsedPlaceholders(Collections.singletonList(TabConstants.Placeholder.VEHICLE));
+        TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(TabConstants.Placeholder.VEHICLE, 100, p -> ((Player)p.getPlayer()).getVehicle() == null ? "" : ((Player)p.getPlayer()).getVehicle());
     }
 
     @Override
@@ -67,6 +67,9 @@ public class VehicleRefresher extends TabFeature {
     @Override
     public void onQuit(TabPlayer disconnectedPlayer) {
         if (playersInVehicle.containsKey(disconnectedPlayer)) vehicles.remove(playersInVehicle.get(disconnectedPlayer).getEntityId());
+        for (List<Entity> entities : vehicles.values()) {
+            entities.remove((Player) disconnectedPlayer.getPlayer());
+        }
     }
 
     @Override
@@ -105,8 +108,10 @@ public class VehicleRefresher extends TabFeature {
     
     /**
      * Returns list of all passengers on specified vehicle
-     * @param vehicle - vehicle to check passengers of
-     * @return list of passengers
+     *
+     * @param   vehicle
+     *          vehicle to check passengers of
+     * @return  list of passengers
      */
     @SuppressWarnings("deprecation")
     public List<Entity> getPassengers(Entity vehicle){
@@ -118,19 +123,6 @@ public class VehicleRefresher extends TabFeature {
             } else {
                 return new ArrayList<>();
             }
-        }
-    }
-
-    /**
-     * Teleports armor stands of all passengers on specified vehicle
-     * @param vehicle - entity to check passengers of
-     */
-    public void processPassengers(Entity vehicle) {
-        for (Entity passenger : getPassengers(vehicle)) {
-            if (passenger instanceof Player) {
-                feature.getArmorStandManager(TAB.getInstance().getPlayer(passenger.getUniqueId())).teleport();
-            }
-            processPassengers(passenger);
         }
     }
 }

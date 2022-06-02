@@ -10,6 +10,7 @@ import me.neznamy.tab.api.bossbar.BarStyle;
 import me.neznamy.tab.api.bossbar.BossBar;
 import me.neznamy.tab.api.bossbar.BossBarManager;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.features.TabExpansion;
 
 /**
@@ -35,7 +36,7 @@ public class BossBarManagerImpl extends TabFeature implements BossBarManager {
     private final List<BossBar> announcements = new ArrayList<>();
 
     //players with toggled BossBar
-    private List<String> bossBarOffPlayers = new ArrayList<>();
+    private final List<String> bossBarOffPlayers;
 
     //time when BossBar announce ends, used for placeholder
     private long announceEndTime;
@@ -46,8 +47,7 @@ public class BossBarManagerImpl extends TabFeature implements BossBarManager {
      * Constructs new instance and loads configuration
      */
     public BossBarManagerImpl() {
-        super("BossBar", "Processing display conditions", TAB.getInstance().getConfiguration().getConfig().getStringList("bossbar.disable-in-servers"),
-                TAB.getInstance().getConfiguration().getConfig().getStringList("bossbar.disable-in-worlds"));
+        super("BossBar", "Processing display conditions", "bossbar");
         for (Object bar : TAB.getInstance().getConfiguration().getConfig().getConfigurationSection("bossbar.bars").keySet()){
             BossBarLine line = loadFromConfig(bar.toString());
             lines.put(bar.toString(), line);
@@ -56,16 +56,20 @@ public class BossBarManagerImpl extends TabFeature implements BossBarManager {
         lineValues = lines.values().toArray(new BossBar[0]);
         if (rememberToggleChoice) {
             bossBarOffPlayers = TAB.getInstance().getConfiguration().getPlayerDataFile().getStringList("bossbar-off", new ArrayList<>());
+        } else {
+            bossBarOffPlayers = Collections.emptyList();
         }
-        TAB.getInstance().getPlaceholderManager().registerServerPlaceholder("%countdown%", 100, () -> (announceEndTime - System.currentTimeMillis()) / 1000);
+        TAB.getInstance().getPlaceholderManager().registerServerPlaceholder(TabConstants.Placeholder.COUNTDOWN, 100, () -> (announceEndTime - System.currentTimeMillis()) / 1000);
         TAB.getInstance().debug(String.format("Loaded BossBar feature with parameters disabledWorlds=%s, disabledServers=%s, toggleCommand=%s, defaultBars=%s, hiddenByDefault=%s, remember_toggle_choice=%s",
                 Arrays.toString(disabledWorlds), Arrays.toString(disabledServers), toggleCommand, defaultBars, hiddenByDefault, rememberToggleChoice));
     }
 
     /**
      * Loads BossBar from config by its name
-     * @param bar - name of BossBar in config
-     * @return loaded BossBar
+     *
+     * @param   bar
+     *          name of BossBar in config
+     * @return  loaded BossBar
      */
     private BossBarLine loadFromConfig(String bar) {
         Map<String, Object> bossBar = TAB.getInstance().getConfiguration().getConfig().getConfigurationSection("bossbar.bars." + bar);
@@ -155,7 +159,9 @@ public class BossBarManagerImpl extends TabFeature implements BossBarManager {
 
     /**
      * Clears and resends all BossBars to specified player
-     * @param p - player to process
+     *
+     * @param   p
+     *          player to process
      */
     protected void detectBossBarsAndSend(TabPlayer p) {
         if (isDisabledPlayer(p) || !hasBossBarVisible(p)) return;
@@ -165,8 +171,11 @@ public class BossBarManagerImpl extends TabFeature implements BossBarManager {
 
     /**
      * Shows BossBars to player if display condition is met
-     * @param p - player to show BossBars to
-     * @param bars - list of BossBars to check
+     *
+     * @param   p
+     *          player to show BossBars to
+     * @param   bars
+     *          list of BossBars to check
      */
     private void showBossBars(TabPlayer p, List<String> bars) {
         if (bars == null) return;

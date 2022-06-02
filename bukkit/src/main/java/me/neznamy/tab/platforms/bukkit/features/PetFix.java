@@ -50,7 +50,8 @@ public class PetFix extends TabFeature {
 
     /**
      * Returns position of pet owner field based on server version
-     * @return position of pet owner field based on server version
+     *
+     * @return  position of pet owner field based on server version
      */
     private int getPetOwnerPosition() {
         if (nms.getMinorVersion() >= 17) {
@@ -72,21 +73,20 @@ public class PetFix extends TabFeature {
     }
 
     /**
-     * Cancels a packet if previous one arrived with no delay to prevent double toggle on 1.16
-     * @throws    ReflectiveOperationException
-     *             if thrown by reflective operation
+     * Cancels a packet if previous one arrived with no delay to prevent double toggle since 1.16
+     *
+     * @throws  ReflectiveOperationException
+     *          if thrown by reflective operation
      */
     @Override
     public boolean onPacketReceive(TabPlayer sender, Object packet) throws ReflectiveOperationException {
-        if (nms.PacketPlayInUseEntity.isInstance(packet)) {
-            if (lastInteractFix.containsKey(sender) && (System.currentTimeMillis() - lastInteractFix.get(sender) < INTERACT_COOLDOWN)) {
+        if (nms.PacketPlayInUseEntity.isInstance(packet) && isInteract(nms.PacketPlayInUseEntity_ACTION.get(packet))) {
+            if (System.currentTimeMillis() - lastInteractFix.getOrDefault(sender, 0L) < INTERACT_COOLDOWN) {
                 //last interact packet was sent right now, cancelling to prevent double-toggle due to this feature enabled
                 return true;
             }
-            if (isInteract(nms.PacketPlayInUseEntity_ACTION.get(packet))) {
-                //this is the first packet, saving player so the next packet can be cancelled
-                lastInteractFix.put(sender, System.currentTimeMillis());
-            }
+            //this is the first packet, saving player so the next packet can be cancelled
+            lastInteractFix.put(sender, System.currentTimeMillis());
         }
         return false;
     }
@@ -101,8 +101,9 @@ public class PetFix extends TabFeature {
 
     /**
      * Removes pet owner field from DataWatcher
-     * @throws    ReflectiveOperationException
-     *             if thrown by reflective operation
+     *
+     * @throws  ReflectiveOperationException
+     *          if thrown by reflective operation
      */
     @SuppressWarnings("unchecked")
     @Override
@@ -116,7 +117,7 @@ public class PetFix extends TabFeature {
                     if (item == null) continue;
                     if (nms.DataWatcherObject_SLOT.getInt(nms.DataWatcherItem_TYPE.get(item)) == petOwnerPosition) {
                         Object value = nms.DataWatcherItem_VALUE.get(item);
-                        if (value instanceof java.util.Optional || value instanceof com.google.common.base.Optional) {
+                        if (value instanceof Optional || value instanceof com.google.common.base.Optional) {
                             removedEntry = item;
                         }
                     }
@@ -130,7 +131,7 @@ public class PetFix extends TabFeature {
             //<1.15
             DataWatcher watcher = DataWatcher.fromNMS(nms.PacketPlayOutSpawnEntityLiving_DATAWATCHER.get(packet));
             DataWatcherItem petOwner = watcher.getItem(petOwnerPosition);
-            if (petOwner != null && (petOwner.getValue() instanceof java.util.Optional || petOwner.getValue() instanceof com.google.common.base.Optional)) {
+            if (petOwner != null && (petOwner.getValue() instanceof Optional || petOwner.getValue() instanceof com.google.common.base.Optional)) {
                 watcher.removeValue(petOwnerPosition);
                 nms.setField(packet, nms.PacketPlayOutSpawnEntityLiving_DATAWATCHER, watcher.toNMS());
             }

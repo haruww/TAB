@@ -1,21 +1,6 @@
 package me.neznamy.tab.shared;
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
-import me.neznamy.tab.shared.event.EventBusImpl;
-import me.neznamy.tab.shared.event.impl.TabLoadEventImpl;
-import org.yaml.snakeyaml.error.YAMLException;
-
-import me.neznamy.tab.api.HeaderFooterManager;
-import me.neznamy.tab.api.PropertyConfiguration;
-import me.neznamy.tab.api.ProtocolVersion;
-import me.neznamy.tab.api.TabAPI;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.TablistFormatManager;
+import me.neznamy.tab.api.*;
 import me.neznamy.tab.api.bossbar.BossBarManager;
 import me.neznamy.tab.api.config.ConfigurationFile;
 import me.neznamy.tab.api.scoreboard.ScoreboardManager;
@@ -23,20 +8,21 @@ import me.neznamy.tab.api.team.TeamManager;
 import me.neznamy.tab.shared.command.DisabledCommand;
 import me.neznamy.tab.shared.command.TabCommand;
 import me.neznamy.tab.shared.config.Configs;
+import me.neznamy.tab.shared.event.EventBusImpl;
+import me.neznamy.tab.shared.event.impl.TabLoadEventImpl;
+import me.neznamy.tab.shared.features.*;
 import me.neznamy.tab.shared.features.alignedplayerlist.AlignedPlayerList;
-import me.neznamy.tab.shared.features.BelowName;
-import me.neznamy.tab.shared.features.GhostPlayerFix;
-import me.neznamy.tab.shared.features.HeaderFooter;
-import me.neznamy.tab.shared.features.NickCompatibility;
-import me.neznamy.tab.shared.features.PingSpoof;
-import me.neznamy.tab.shared.features.PlaceholderManagerImpl;
-import me.neznamy.tab.shared.features.PlayerList;
-import me.neznamy.tab.shared.features.SpectatorFix;
-import me.neznamy.tab.shared.features.YellowNumber;
 import me.neznamy.tab.shared.features.layout.LayoutManager;
 import me.neznamy.tab.shared.features.nametags.NameTag;
 import me.neznamy.tab.shared.features.scoreboard.ScoreboardManagerImpl;
 import me.neznamy.tab.shared.features.sorting.Sorting;
+import org.yaml.snakeyaml.error.YAMLException;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Main class of the plugin storing data and implementing API
@@ -108,20 +94,27 @@ public class TAB extends TabAPI {
     /** TAB's data folder */
     private final File dataFolder;
 
+    /** Plugin's console logger provided by platform */
+    private final Object logger;
+
+    /** File with YAML syntax error, which prevented plugin from loading */
+    private String brokenFile;
+
     /**
      * Constructs new instance with given parameters and sets this
      * new instance as {@link me.neznamy.tab.api.TabAPI} instance.
      *
-     * @param    platform
-     *             Platform interface
-     * @param    serverVersion
-     *             Version the server is running on
+     * @param   platform
+     *          Platform interface
+     * @param   serverVersion
+     *          Version the server is running on
      */
-    public TAB(Platform platform, ProtocolVersion serverVersion, String serverVersionString, File dataFolder) {
+    public TAB(Platform platform, ProtocolVersion serverVersion, String serverVersionString, File dataFolder, Object logger) {
         this.platform = platform;
         this.serverVersion = serverVersion;
         this.serverVersionString = serverVersionString;
         this.dataFolder = dataFolder;
+        this.logger = logger;
         TabAPI.setInstance(this);
         try {
             Class.forName("org.geysermc.floodgate.api.FloodgateApi");
@@ -140,9 +133,9 @@ public class TAB extends TabAPI {
      * Returns player by TabList UUID. This is required due to Velocity
      * as player uuid and TabList uuid do not match there at some circumstances
      *
-     * @param    tabListId
-     *             TabList id of player
-     * @return    player with provided id or null if player was not found
+     * @param   tabListId
+     *          TabList id of player
+     * @return  player with provided id or null if player was not found
      */
     public TabPlayer getPlayerByTabListUUID(UUID tabListId) {
         return playersByTabListId.get(tabListId);
@@ -157,11 +150,10 @@ public class TAB extends TabAPI {
     public String load() {
         try {
             long time = System.currentTimeMillis();
-            this.errorManager = new ErrorManager();
+            errorManager = new ErrorManager();
             cpu = new CpuManager();
             featureManager = new FeatureManagerImpl();
-            configuration = new Configs(this);
-            configuration.loadFiles();
+            configuration = new Configs();
             featureManager.registerFeature(TabConstants.Feature.PLACEHOLDER_MANAGER, new PlaceholderManagerImpl());
             featureManager.registerFeature(TabConstants.Feature.GROUP_MANAGER, new GroupManager(platform.detectPermissionPlugin()));
             platform.loadFeatures();
@@ -172,12 +164,13 @@ public class TAB extends TabAPI {
             if (eventBus != null) eventBus.fire(TabLoadEventImpl.getInstance());
             platform.callLoadEvent();
             disabled = false;
-            platform.sendConsoleMessage("&a[TAB] Enabled in " + (System.currentTimeMillis()-time) + "ms", true);
+            sendConsoleMessage("&aEnabled in " + (System.currentTimeMillis()-time) + "ms", true);
             return configuration.getMessages().getReloadSuccess();
         } catch (YAMLException e) {
-            platform.sendConsoleMessage("&c[TAB] Did not enable due to a broken configuration file.", true);
+            sendConsoleMessage("&cDid not enable due to a broken configuration file.", true);
             kill();
-            return configuration.getReloadFailedMessage().replace("%file%", "-"); //recode soon
+            return (configuration == null ? "&4Failed to reload, file %file% has broken syntax. Check console for more info."
+                    : configuration.getMessages().getReloadFailBrokenFile()).replace("%file%", brokenFile);
         } catch (Exception e) {
             errorManager.criticalError("Failed to enable. Did you just invent a new way to break the plugin by misconfiguring it?", e);
             kill();
@@ -195,7 +188,7 @@ public class TAB extends TabAPI {
             long time = System.currentTimeMillis();
             if (configuration.getMysql() != null) configuration.getMysql().closeConnection();
             featureManager.unload();
-            platform.sendConsoleMessage("&a[TAB] Disabled in " + (System.currentTimeMillis()-time) + "ms", true);
+            sendConsoleMessage("&aDisabled in " + (System.currentTimeMillis()-time) + "ms", true);
         } catch (Exception e) {
             errorManager.criticalError("Failed to disable", e);
         }
@@ -251,8 +244,8 @@ public class TAB extends TabAPI {
     /**
      * Adds specified player to online players
      *
-     * @param    player
-     *             Player to add
+     * @param   player
+     *          Player to add
      */
     public void addPlayer(TabPlayer player) {
         data.put(player.getUniqueId(), player);
@@ -263,8 +256,8 @@ public class TAB extends TabAPI {
     /**
      * Removes specified player from online players
      *
-     * @param    player
-     *             Player to remove
+     * @param   player
+     *          Player to remove
      */
     public void removePlayer(TabPlayer player) {
         data.remove(player.getUniqueId());
@@ -275,7 +268,7 @@ public class TAB extends TabAPI {
     /**
      * Returns instance of this class
      *
-     * @return    instance of this class
+     * @return  instance of this class
      */
     public static TAB getInstance() {
         return instance;
@@ -284,8 +277,8 @@ public class TAB extends TabAPI {
     /**
      * Changes instance of this class to new value
      *
-     * @param    instance
-     *             Instance to set variable to
+     * @param   instance
+     *          Instance to set variable to
      */
     public static void setInstance(TAB instance) {
         TAB.instance = instance;
@@ -294,7 +287,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@code true} if floodgate plugin is installed, {@code false} if not
      *
-     * @return    {@code true} if floodgate plugin is installed, {@code false} if not
+     * @return  {@code true} if floodgate plugin is installed, {@code false} if not
      */
     public boolean isFloodgateInstalled() {
         return floodgate;
@@ -303,7 +296,7 @@ public class TAB extends TabAPI {
     /**
      * Returns TAB's group manager used to refresh player groups from other plugins
      *
-     * @return    group manager instance
+     * @return  group manager instance
      */
     public GroupManager getGroupManager() {
         return (GroupManager) featureManager.getFeature(TabConstants.Feature.GROUP_MANAGER);
@@ -312,7 +305,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #platform}
      *
-     * @return    {@link #platform}
+     * @return  {@link #platform}
      */
     public Platform getPlatform() {
         return platform;
@@ -321,7 +314,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #cpu}
      *
-     * @return    {@link #cpu}
+     * @return  {@link #cpu}
      */
     public CpuManager getCPUManager() {
         return cpu;
@@ -330,7 +323,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #errorManager}
      *
-     * @return    {@link #errorManager}
+     * @return  {@link #errorManager}
      */
     public ErrorManager getErrorManager() {
         return errorManager;
@@ -339,7 +332,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #configuration}
      *
-     * @return    {@link #configuration}
+     * @return  {@link #configuration}
      */
     public Configs getConfiguration() {
         return configuration;
@@ -348,7 +341,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #disabled}
      *
-     * @return    {@link #disabled}
+     * @return  {@link #disabled}
      */
     public boolean isDisabled() {
         return disabled;
@@ -357,7 +350,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #command}
      *
-     * @return    {@link #command}
+     * @return  {@link #command}
      */
     public TabCommand getCommand() {
         return command;
@@ -366,7 +359,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #disabledCommand}
      *
-     * @return    {@link #disabledCommand}
+     * @return  {@link #disabledCommand}
      */
     public DisabledCommand getDisabledCommand() {
         return disabledCommand;
@@ -375,7 +368,7 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #serverVersionString}
      *
-     * @return    {@link #serverVersionString}
+     * @return  {@link #serverVersionString}
      */
     public String getServerVersionString() {
         return serverVersionString;
@@ -384,10 +377,19 @@ public class TAB extends TabAPI {
     /**
      * Returns {@link #dataFolder}
      *
-     * @return    {@link #dataFolder}
+     * @return  {@link #dataFolder}
      */
     public File getDataFolder() {
         return dataFolder;
+    }
+
+    /**
+     * Returns {@link #logger}
+     *
+     * @return  {@link #logger}
+     */
+    public Object getLogger() {
+        return logger;
     }
 
     @Override
@@ -475,6 +477,11 @@ public class TAB extends TabAPI {
     }
 
     @Override
+    public void setBrokenFile(String file) {
+        this.brokenFile = file;
+    }
+
+    @Override
     public TablistFormatManager getTablistFormatManager() {
         return (TablistFormatManager) featureManager.getFeature(TabConstants.Feature.PLAYER_LIST);
     }
@@ -491,7 +498,7 @@ public class TAB extends TabAPI {
 
     @Override
     public void debug(String message) {
-        if (configuration.isDebugMode()) platform.sendConsoleMessage("&9[TAB DEBUG] " + message, true);
+        if (configuration.isDebugMode()) sendConsoleMessage("&9[DEBUG] " + message, true);
     }
 
     @Override

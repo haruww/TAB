@@ -8,6 +8,7 @@ import me.neznamy.tab.api.chat.TextColor;
 import me.neznamy.tab.api.chat.rgb.format.BukkitFormat;
 import me.neznamy.tab.api.chat.rgb.format.CMIFormat;
 import me.neznamy.tab.api.chat.rgb.format.HtmlFormat;
+import me.neznamy.tab.api.chat.rgb.format.KyoriFormat;
 import me.neznamy.tab.api.chat.rgb.format.RGBFormatter;
 import me.neznamy.tab.api.chat.rgb.format.UnnamedFormat1;
 import me.neznamy.tab.api.chat.rgb.gradient.CMIGradient;
@@ -44,7 +45,8 @@ public class RGBUtils {
                 new BukkitFormat(),
                 new CMIFormat(),
                 new UnnamedFormat1(),
-                new HtmlFormat()
+                new HtmlFormat(),
+                new KyoriFormat()
         };
         gradients = new GradientPattern[] {
                 //{#RRGGBB>}text{#RRGGBB<}
@@ -63,7 +65,8 @@ public class RGBUtils {
 
     /**
      * Returns instance of this class
-     * @return    instance
+     *
+     * @return  instance
      */
     public static RGBUtils getInstance() {
         return instance;
@@ -71,20 +74,16 @@ public class RGBUtils {
 
     /**
      * Applies all RGB formats and gradients to text and returns it.
-     * This method is called on every property initialization to convert formats
-     * once instead of on every refresh, if possible. Because of that, parameter
-     * {@code ignorePlaceholders} exists to not break raw placeholder identifiers
-     * @param    text
-     *             original text
-     * @param    ignorePlaceholders
-     *             whether placeholders should be ignored or not
-     * @return    text where everything is converted to #RRGGBB
+     *
+     * @param   text
+     *          original text
+     * @return  text where everything is converted to #RRGGBB
      */
-    public String applyFormats(String text, boolean ignorePlaceholders) {
+    public String applyFormats(String text) {
         Preconditions.checkNotNull(text, "text");
         String replaced = text;
         for (GradientPattern pattern : gradients) {
-            replaced = pattern.applyPattern(replaced, ignorePlaceholders);
+            replaced = pattern.applyPattern(replaced, false);
         }
         for (RGBFormatter formatter : formats) {
             replaced = formatter.reformat(replaced);
@@ -93,21 +92,39 @@ public class RGBUtils {
     }
 
     /**
+     * Applies all gradient formats to text and returns it. This only affects
+     * usage where no placeholder is used inside.
+     *
+     * @param   text
+     *          original text
+     * @return  text where all gradients with static text are converted to #RRGGBB
+     */
+    public String applyCleanGradients(String text) {
+        Preconditions.checkNotNull(text, "text");
+        String replaced = text;
+        for (GradientPattern pattern : gradients) {
+            replaced = pattern.applyPattern(replaced, true);
+        }
+        return replaced;
+    }
+
+    /**
      * Converts TAB's RGB format (#RRGGBB) into bukkit one
      * (&amp;x&amp;r&amp;r&amp;g&amp;g&amp;b&amp;b) for modern
      * clients (1.16+), for legacy clients it will use the closest color.
-     * @param    text
-     *             text to convert
-     * @param    rgbClient
-     *             whether client accepts RGB or not
-     * @return    converted text
+     *
+     * @param   text
+     *          text to convert
+     * @param   rgbClient
+     *          whether client accepts RGB or not
+     * @return  converted text
      */
     public String convertToBukkitFormat(String text, boolean rgbClient) {
         if (text == null) return null;
         if (!text.contains("#")) return text; //no rgb codes
         if (rgbClient) {
             //converting random formats to TAB one
-            String replaced = applyFormats(text, false);
+            String replaced = applyFormats(text);
             for (Pattern p : new Pattern[]{tabPatternLegacy, tabPattern}) {
                 Matcher m = p.matcher(replaced);
                 while (m.find()) {
@@ -124,14 +141,15 @@ public class RGBUtils {
 
     /**
      * Converts all hex codes in given string to legacy codes
-     * @param    text
-     *             text to convert
-     * @return    translated text
+     *
+     * @param   text
+     *          text to convert
+     * @return  translated text
      */
     public String convertRGBtoLegacy(String text) {
         if (text == null) return null;
         if (!text.contains("#")) return EnumChatFormat.color(text);
-        String applied = applyFormats(text, false);
+        String applied = applyFormats(text);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < applied.length(); i++){
             char c = applied.charAt(i);
@@ -158,9 +176,10 @@ public class RGBUtils {
     /**
      * Returns true if entered string is a valid 6-digit combination of
      * hexadecimal numbers, false if not
-     * @param    string
-     *             string to check
-     * @return    {@code true} if valid, {@code false} if not
+     *
+     * @param   string
+     *          string to check
+     * @return  {@code true} if valid, {@code false} if not
      */
     public boolean isHexCode(String string) {
         Preconditions.checkNotNull(string, "string");
@@ -174,11 +193,12 @@ public class RGBUtils {
 
     /**
      * Returns true if text contains legacy color request at defined RGB index start
-     * @param    text
-     *             text to check
-     * @param    i
-     *             current index start
-     * @return    {@code true} if legacy color is defined and valid, {@code false} otherwise
+     *
+     * @param   text
+     *          text to check
+     * @param   i
+     *          current index start
+     * @return  {@code true} if legacy color is defined and valid, {@code false} otherwise
      */
     private static boolean containsLegacyCode(String text, int i) {
         if (text.length() - i < 9 || text.charAt(i+7) != '|') return false;

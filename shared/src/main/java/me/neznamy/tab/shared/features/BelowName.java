@@ -22,13 +22,12 @@ public class BelowName extends TabFeature {
     public static final String OBJECTIVE_NAME = "TAB-BelowName";
     public static final int DISPLAY_SLOT = 2;
 
-    private final String rawNumber = TAB.getInstance().getConfiguration().getConfig().getString("belowname-objective.number", "%health%");
+    private final String rawNumber = TAB.getInstance().getConfiguration().getConfig().getString("belowname-objective.number", TabConstants.Placeholder.HEALTH);
     private final String rawText = TAB.getInstance().getConfiguration().getConfig().getString("belowname-objective.text", "Health");
     private final TabFeature textRefresher = new TextRefresher();
 
     public BelowName() {
-        super("BelowName", "Updating BelowName number", TAB.getInstance().getConfiguration().getConfig().getStringList("belowname-objective.disable-in-servers"),
-                TAB.getInstance().getConfiguration().getConfig().getStringList("belowname-objective.disable-in-worlds"));
+        super("BelowName", "Updating BelowName number", "belowname-objective");
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.BELOW_NAME_TEXT, textRefresher);
         TAB.getInstance().debug(String.format("Loaded BelowName feature with parameters number=%s, text=%s, disabledWorlds=%s, disabledServers=%s", rawNumber, rawText, Arrays.toString(disabledWorlds), Arrays.toString(disabledServers)));
     }
@@ -87,8 +86,6 @@ public class BelowName extends TabFeature {
     @Override
     public void onServerChange(TabPlayer p, String from, String to) {
         onWorldChange(p, null, null);
-        if (TAB.getInstance().getFeatureManager().isFeatureEnabled(TabConstants.Feature.PIPELINE_INJECTION)) return;
-        onLoginPacket(p);
     }
 
     @Override
@@ -109,6 +106,7 @@ public class BelowName extends TabFeature {
             onJoin(p);
             return;
         }
+        if (disabledNow) return;
         int number = getValue(p);
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()){
             if (sameServerAndWorld(all, p)) {

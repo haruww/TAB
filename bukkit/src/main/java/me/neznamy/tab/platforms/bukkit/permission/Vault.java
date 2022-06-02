@@ -17,8 +17,11 @@ public class Vault extends PermissionPlugin {
 
     /**
      * Constructs new instance with given parameters
-     * @param permission permission plugin implementation
-     * @param vaultVersion vault version
+     *
+     * @param   permission
+     *          permission plugin implementation
+     * @param   vaultVersion
+     *          vault version
      */
     public Vault(Permission permission, String vaultVersion) {
         super(vaultVersion);
@@ -27,7 +30,7 @@ public class Vault extends PermissionPlugin {
 
     @Override
     public String getPrimaryGroup(TabPlayer p) {
-        if (getName().equals("SuperPerms")) return TabConstants.DEFAULT_GROUP; //Vault's dummy implementation throws exception on every request
+        if (getName().equals("SuperPerms")) return TabConstants.NO_GROUP; //Vault's dummy implementation throws exception on every request
         return permission.getPrimaryGroup((Player) p.getPlayer());
     }
 

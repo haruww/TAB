@@ -1,16 +1,10 @@
 package me.neznamy.tab.platforms.bungeecord;
 
 import com.imaginarycode.minecraft.redisbungee.RedisBungeeAPI;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.chat.EnumChatFormat;
-import me.neznamy.tab.api.util.Preconditions;
-import me.neznamy.tab.platforms.bungeecord.event.TabLoadEvent;
-import me.neznamy.tab.platforms.bungeecord.event.TabPlayerLoadEvent;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.proxy.ProxyPlatform;
 import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
 
@@ -20,7 +14,7 @@ import net.md_5.bungee.api.plugin.Plugin;
 public class BungeePlatform extends ProxyPlatform {
 
     /**
-     * Constructs new instance with given parameter
+     * Constructs new instance
      */
     public BungeePlatform() {
         super(new BungeePacketBuilder());
@@ -31,9 +25,9 @@ public class BungeePlatform extends ProxyPlatform {
         TAB tab = TAB.getInstance();
         if (tab.getConfiguration().isPipelineInjection())
             tab.getFeatureManager().registerFeature(TabConstants.Feature.PIPELINE_INJECTION, new BungeePipelineInjector());
-        tab.getPlaceholderManager().registerPlayerPlaceholder("%displayname%", 500, p -> ((ProxiedPlayer) p.getPlayer()).getDisplayName());
+        tab.getPlaceholderManager().registerPlayerPlaceholder(TabConstants.Placeholder.DISPLAY_NAME, 500, p -> ((ProxiedPlayer) p.getPlayer()).getDisplayName());
         super.loadFeatures();
-        if (ProxyServer.getInstance().getPluginManager().getPlugin("RedisBungee") != null) {
+        if (ProxyServer.getInstance().getPluginManager().getPlugin(TabConstants.Plugin.REDIS_BUNGEE) != null) {
             if (RedisBungeeAPI.getRedisBungeeApi() != null) {
                 tab.getFeatureManager().registerFeature(TabConstants.Feature.REDIS_BUNGEE, new RedisBungeeSupport());
             } else {
@@ -44,26 +38,9 @@ public class BungeePlatform extends ProxyPlatform {
             tab.addPlayer(new BungeeTabPlayer(p));
         }
     }
-    
-    @Override
-    public void sendConsoleMessage(String message, boolean translateColors) {
-        Preconditions.checkNotNull(message, "message");
-        ProxyServer.getInstance().getConsole().sendMessage(new TextComponent(translateColors ? EnumChatFormat.color(message) : message));
-    }
-
-    @Override
-    public void callLoadEvent() {
-        ProxyServer.getInstance().getPluginManager().callEvent(new TabLoadEvent());
-    }
-    
-    @Override
-    public void callLoadEvent(TabPlayer player) {
-        ProxyServer.getInstance().getPluginManager().callEvent(new TabPlayerLoadEvent(player));
-    }
 
     @Override
     public String getPluginVersion(String plugin) {
-        Preconditions.checkNotNull(plugin, "plugin");
         Plugin pl = ProxyServer.getInstance().getPluginManager().getPlugin(plugin);
         return pl == null ? null : pl.getDescription().getVersion();
     }

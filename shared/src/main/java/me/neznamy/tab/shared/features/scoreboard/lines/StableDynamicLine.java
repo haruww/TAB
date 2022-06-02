@@ -1,6 +1,7 @@
 package me.neznamy.tab.shared.features.scoreboard.lines;
 
 import me.neznamy.tab.api.Property;
+import me.neznamy.tab.api.ProtocolVersion;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.chat.EnumChatFormat;
 import me.neznamy.tab.api.chat.rgb.RGBUtils;
@@ -17,13 +18,17 @@ import me.neznamy.tab.shared.features.scoreboard.ScoreboardImpl;
  */
 public class StableDynamicLine extends ScoreboardLine {
 
-    private static final String[] EMPTY_ARRAY = new String[0];
+    private final String[] EMPTY_ARRAY = new String[0];
 
     /**
      * Constructs new instance with given parameters
-     * @param parent - scoreboard this line belongs to
-     * @param lineNumber - ID of this line
-     * @param text - text to display
+     *
+     * @param   parent
+     *          scoreboard this line belongs to
+     * @param   lineNumber
+     *          ID of this line
+     * @param   text
+     *          text to display
      */
     public StableDynamicLine(ScoreboardImpl parent, int lineNumber, String text) {
         super(parent, lineNumber);
@@ -56,10 +61,14 @@ public class StableDynamicLine extends ScoreboardLine {
     /**
      * Applies all placeholders and splits the result into prefix/suffix based on client version
      * or hides the line entirely if result is empty (and shows back once it's not)
-     * @param p - player to replace text for
-     * @param force - if action should be done despite update seemingly not needed
-     * @param suppressToggle - if line should NOT be removed despite being empty
-     * @return list of 2 elements for prefix/suffix
+     *
+     * @param   p
+     *          player to replace text for
+     * @param   force
+     *          if action should be done despite update seemingly not needed
+     * @param   suppressToggle
+     *          if line should NOT be removed despite being empty
+     * @return  list of 2 elements for prefix/suffix
      */
     private String[] replaceText(TabPlayer p, boolean force, boolean suppressToggle) {
         Property scoreProperty = p.getProperty(parent.getName() + "-" + teamName);
@@ -92,13 +101,16 @@ public class StableDynamicLine extends ScoreboardLine {
 
     /**
      * Splits text into 2 values (prefix/suffix) based on client version and text itself
-     * @param p - player to split text for
-     * @param text - text to split
-     * @return array of 2 elements for prefix and suffix
+     *
+     * @param   p
+     *          player to split text for
+     * @param   text
+     *          text to split
+     * @return  array of 2 elements for prefix and suffix
      */
     private String[] split(TabPlayer p, String text) {
         int charLimit = 16;
-        if (!TAB.getInstance().getPlatform().isProxy() &&
+        if (TAB.getInstance().getServerVersion() != ProtocolVersion.PROXY &&
             TAB.getInstance().getServerVersion().getMinorVersion() >= 13 &&
             p.getVersion().getMinorVersion() < 13) {
             //ProtocolSupport bug
@@ -126,7 +138,7 @@ public class StableDynamicLine extends ScoreboardLine {
     public void setText(String text) {
         this.text = text;
         for (TabPlayer p : parent.getPlayers()) {
-            p.setProperty(this, teamName, text);
+            p.setProperty(this, parent.getName() + "-" + teamName, text);
             refresh(p, true);
         }
     }

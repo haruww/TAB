@@ -22,7 +22,9 @@ public class BukkitNameTagX extends NameTagX {
 
     /**
      * Constructs new instance with given parameters and loads config options
-     * @param plugin - plugin instance
+     *
+     * @param   plugin
+     *          plugin instance
      */
     public BukkitNameTagX(JavaPlugin plugin) {
         super(BukkitArmorStandManager::new);
@@ -77,9 +79,8 @@ public class BukkitNameTagX extends NameTagX {
     private void spawnArmorStands(TabPlayer viewer, TabPlayer target) {
         if (target == viewer || isPlayerDisabled(target)) return;
         if (((Player) viewer.getPlayer()).getWorld() != ((Player) target.getPlayer()).getWorld()) return;
-        if (getDistance(viewer, target) <= 48) {
-            if (((Player)viewer.getPlayer()).canSee((Player)target.getPlayer()) && !target.isVanished()) getArmorStandManager(target).spawn(viewer);
-        }
+        if (getDistance(viewer, target) <= 48 && ((Player)viewer.getPlayer()).canSee((Player)target.getPlayer()) && !target.isVanished())
+            getArmorStandManager(target).spawn(viewer);
     }
 
     @Override
@@ -101,7 +102,6 @@ public class BukkitNameTagX extends NameTagX {
 
     @Override
     public void pauseArmorStands(TabPlayer player) {
-        if (isPlayerDisabled(player)) return;
         getArmorStandManager(player).destroy();
     }
 
@@ -118,8 +118,8 @@ public class BukkitNameTagX extends NameTagX {
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             getArmorStandManager(all).unregisterPlayer(disconnectedPlayer);
         }
-        getArmorStandManager(disconnectedPlayer).destroy();
-        TAB.getInstance().getCPUManager().runTaskLater(500, this, TabConstants.CpuUsageCategory.PLAYER_QUIT, () -> getArmorStandManager(disconnectedPlayer).destroy());
+        armorStandManagerMap.get(disconnectedPlayer).destroy();
+        armorStandManagerMap.remove(disconnectedPlayer); // WeakHashMap doesn't clear this due to value referencing the key
     }
 
     @Override
@@ -134,13 +134,22 @@ public class BukkitNameTagX extends NameTagX {
         if (isPreviewingNametag(p)) {
             getArmorStandManager(p).spawn(p);
         }
+        //for some reason this is needed for some users
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            if (viewer.getWorld().equals(from)) {
+                getArmorStandManager(p).destroy(viewer);
+            }
+        }
     }
 
     /**
      * Returns flat distance between two players ignoring Y value
-     * @param player1 - first player
-     * @param player2 - second player
-     * @return flat distance in blocks
+     *
+     * @param   player1
+     *          first player
+     * @param   player2
+     *          second player
+     * @return  flat distance in blocks
      */
     private double getDistance(TabPlayer player1, TabPlayer player2) {
         Location loc1 = ((Player) player1.getPlayer()).getLocation();
@@ -156,6 +165,4 @@ public class BukkitNameTagX extends NameTagX {
     public VehicleRefresher getVehicleManager() {
         return vehicleManager;
     }
-
-
 }

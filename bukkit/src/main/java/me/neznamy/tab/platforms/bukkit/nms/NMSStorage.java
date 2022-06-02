@@ -15,7 +15,6 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 
 import io.netty.channel.Channel;
@@ -46,7 +45,6 @@ public final class NMSStorage {
     private final Class<?> Entity = getNMSClass("net.minecraft.world.entity.Entity", "Entity");
     private final Class<?> EntityLiving = getNMSClass("net.minecraft.world.entity.EntityLiving", "EntityLiving");
     private final Class<?> PlayerConnection = getNMSClass("net.minecraft.server.network.PlayerConnection", "PlayerConnection");
-    public Constructor<?> newEntityArmorStand;
     public final Field PING = getField(EntityPlayer, "ping", "latency", "field_71138_i", "field_13967", "e");
     public final Field PLAYER_CONNECTION = getFields(EntityPlayer, PlayerConnection).get(0);
     public Field NETWORK_MANAGER;
@@ -54,23 +52,16 @@ public final class NMSStorage {
     public final Method getHandle = Class.forName("org.bukkit.craftbukkit." + serverPackage + ".entity.CraftPlayer").getMethod("getHandle");
     public final Method sendPacket = getMethods(PlayerConnection, void.class, Packet).get(0);
     public Method getProfile;
-    public final Method World_getHandle = Class.forName("org.bukkit.craftbukkit." + serverPackage + ".CraftWorld").getMethod("getHandle");
     public final Enum[] EnumChatFormat_values = getEnumValues(EnumChatFormat);
 
     //chat
-    public Class<?> ChatComponentText;
-    public Class<?> ChatHoverable;
     public Class<?> EnumClickAction;
     private Class<?> IChatBaseComponent;
     public Constructor<?> newChatComponentText;
     public Constructor<?> newChatClickable;
     public Constructor<?> newChatModifier;
     public Constructor<?> newChatHoverable;
-    public Field ChatBaseComponent_extra;
     public Field ChatBaseComponent_modifier;
-    public Field ChatComponentText_text;
-    public Field ChatClickable_action;
-    public Field ChatClickable_value;
     public Field ChatModifier_bold;
     public Field ChatModifier_italic;
     public Field ChatModifier_underlined;
@@ -78,16 +69,11 @@ public final class NMSStorage {
     public Field ChatModifier_obfuscated;
     public Field ChatModifier_clickEvent;
     public Field ChatModifier_hoverEvent;
-    public Field ChatHexColor_name;
-    public Field ChatHexColor_rgb;
     public Field ChatModifier_color;
     public Method ChatComponentText_addSibling;
     public Method EnumHoverAction_a;
-    public Method ChatHoverable_getAction;
     public Method ChatHexColor_ofInt;
     public Method ChatHexColor_ofString;
-    public Method ChatHoverable_serialize;
-    public Method ChatHoverable_getValue;
     public Method EnumHoverAction_fromJson;
     public Method EnumHoverAction_fromLegacyComponent;
 
@@ -182,7 +168,7 @@ public final class NMSStorage {
     private final Class<?> IScoreboardCriteria = getNMSClass("net.minecraft.world.scores.criteria.IScoreboardCriteria", "IScoreboardCriteria");
     public Class<?> EnumScoreboardHealthDisplay;
     public final Constructor<?> newScoreboardObjective = ScoreboardObjective.getConstructors()[0];
-    public final Constructor<?> newScoreboard = Scoreboard.getConstructor();
+    private final Constructor<?> newScoreboard = Scoreboard.getConstructor();
     public final Constructor<?> newScoreboardScore = ScoreboardScore.getConstructor(Scoreboard, ScoreboardObjective, String.class);
     public final Constructor<?> newPacketPlayOutScoreboardDisplayObjective = PacketPlayOutScoreboardDisplayObjective.getConstructor(int.class, ScoreboardObjective);
     public Constructor<?> newPacketPlayOutScoreboardObjective;
@@ -205,6 +191,7 @@ public final class NMSStorage {
     public Constructor<?> newScoreboardTeam;
     public Constructor<?> newPacketPlayOutScoreboardTeam;
     public Field PacketPlayOutScoreboardTeam_NAME;
+    public Field PacketPlayOutScoreboardTeam_ACTION;
     public Field PacketPlayOutScoreboardTeam_PLAYERS;
     public Method ScoreboardTeam_getPlayerNameSet;
     public Method ScoreboardTeam_setNameTagVisibility;
@@ -221,13 +208,18 @@ public final class NMSStorage {
     public Enum[] EnumTeamPush_values;
     public Enum[] PacketPlayOutScoreboardTeam_PlayerAction_values;
 
+    //other
+    public final Object emptyScoreboard = newScoreboard.newInstance();
+    public Object dummyEntity;
+
     /**
      * Creates new instance, initializes required NMS classes and fields
-     * @throws    ReflectiveOperationException
-     *             If any class, field or method fails to load
+     *
+     * @throws  ReflectiveOperationException
+     *          If any class, field or method fails to load
      */
     public NMSStorage() throws ReflectiveOperationException {
-        ProtocolVersion.UNKNOWN.setMinorVersion(minorVersion); //fixing compatibility with forks that set version field value to "Unknown"
+        ProtocolVersion.UNKNOWN_SERVER_VERSION.setMinorVersion(minorVersion); //fixing compatibility with forks that set version field value to "Unknown"
         Class<?> NetworkManager = getNMSClass("net.minecraft.network.NetworkManager", "NetworkManager");
         if (minorVersion >= 7) {
             NETWORK_MANAGER = getFields(PlayerConnection, NetworkManager).get(0);
@@ -235,8 +227,10 @@ public final class NMSStorage {
         if (minorVersion >= 8) {
             CHANNEL = getFields(NetworkManager, Channel.class).get(0);
             getProfile = getMethods(getNMSClass("net.minecraft.world.entity.player.EntityHuman", "EntityHuman"), GameProfile.class).get(0);
-            newEntityArmorStand = getNMSClass("net.minecraft.world.entity.decoration.EntityArmorStand", "EntityArmorStand")
+            Constructor<?> newEntityArmorStand = getNMSClass("net.minecraft.world.entity.decoration.EntityArmorStand", "EntityArmorStand")
                     .getConstructor(getNMSClass("net.minecraft.world.level.World", "World"), double.class, double.class, double.class);
+            Method World_getHandle = Class.forName("org.bukkit.craftbukkit." + serverPackage + ".CraftWorld").getMethod("getHandle");
+            dummyEntity = newEntityArmorStand.newInstance(World_getHandle.invoke(Bukkit.getWorlds().get(0)), 0, 0, 0);
         }
         initializeChatComponents();
         initializeChatPacket();
@@ -255,7 +249,9 @@ public final class NMSStorage {
 
     /**
      * Sets new instance
-     * @param instance - new instance
+     *
+     * @param   instance
+     *          new instance
      */
     public static void setInstance(NMSStorage instance) {
         NMSStorage.instance = instance;
@@ -263,7 +259,8 @@ public final class NMSStorage {
 
     /**
      * Returns instance
-     * @return instance
+     *
+     * @return  instance
      */
     public static NMSStorage getInstance() {
         return instance;
@@ -273,19 +270,15 @@ public final class NMSStorage {
         if (minorVersion < 7) return;
         Class<?> ChatBaseComponent = getNMSClass("net.minecraft.network.chat.ChatBaseComponent", "ChatBaseComponent");
         Class<?> ChatClickable = getNMSClass("net.minecraft.network.chat.ChatClickable", "ChatClickable");
-        ChatComponentText = getNMSClass("net.minecraft.network.chat.ChatComponentText", "ChatComponentText");
-        ChatHoverable = getNMSClass("net.minecraft.network.chat.ChatHoverable", "ChatHoverable");
+        Class<?> ChatComponentText = getNMSClass("net.minecraft.network.chat.ChatComponentText", "ChatComponentText");
+        Class<?> ChatHoverable = getNMSClass("net.minecraft.network.chat.ChatHoverable", "ChatHoverable");
         Class<?> ChatModifier = getNMSClass("net.minecraft.network.chat.ChatModifier", "ChatModifier");
         EnumClickAction = getNMSClass("net.minecraft.network.chat.ChatClickable$EnumClickAction", "ChatClickable$EnumClickAction", "EnumClickAction");
         Class<?> EnumHoverAction = getNMSClass("net.minecraft.network.chat.ChatHoverable$EnumHoverAction", "ChatHoverable$EnumHoverAction", "EnumHoverAction");
         IChatBaseComponent = getNMSClass("net.minecraft.network.chat.IChatBaseComponent", "IChatBaseComponent");
         newChatComponentText = ChatComponentText.getConstructor(String.class);
         newChatClickable = ChatClickable.getConstructor(EnumClickAction, String.class);
-        ChatBaseComponent_extra = getFields(ChatBaseComponent, List.class).get(0);
         ChatBaseComponent_modifier = getFields(ChatBaseComponent, ChatModifier).get(0);
-        ChatComponentText_text = getFields(ChatComponentText, String.class).get(0);
-        ChatClickable_action = getFields(ChatClickable, EnumClickAction).get(0);
-        ChatClickable_value = getFields(ChatClickable, String.class).get(0);
         List<Field> booleans = getFields(ChatModifier, Boolean.class);
         ChatModifier_bold = booleans.get(0);
         ChatModifier_italic = booleans.get(1);
@@ -296,27 +289,20 @@ public final class NMSStorage {
         ChatModifier_hoverEvent = getFields(ChatModifier, ChatHoverable).get(0);
         ChatComponentText_addSibling = getMethod(ChatComponentText, new String[]{"addSibling", "a", "func_150257_a", "method_10852"}, IChatBaseComponent);
         EnumHoverAction_a = getMethod(EnumHoverAction, new String[]{"a", "func_150684_a", "method_27670"}, String.class);
-        ChatHoverable_getAction = getMethods(ChatHoverable, EnumHoverAction).get(0);
         if (minorVersion >= 16) {
             Class<?> ChatHexColor = getNMSClass("net.minecraft.network.chat.ChatHexColor", "ChatHexColor");
             Class<?> MinecraftKey = getNMSClass("net.minecraft.resources.MinecraftKey", "MinecraftKey");
             newChatModifier = setAccessible(ChatModifier.getDeclaredConstructor(ChatHexColor, Boolean.class, Boolean.class, Boolean.class, Boolean.class, Boolean.class, ChatClickable, ChatHoverable, String.class, MinecraftKey));
             newChatHoverable = ChatHoverable.getConstructor(EnumHoverAction, Object.class);
-            List<Field> list = getFields(ChatHexColor, String.class);
-            ChatHexColor_name = list.get(list.size()-1);
-            ChatHexColor_rgb = getFields(ChatHexColor, int.class).get(0);
             ChatModifier_color = getFields(ChatModifier, ChatHexColor).get(0);
             ChatHexColor_ofInt = getMethods(ChatHexColor, ChatHexColor, int.class).get(0);
             ChatHexColor_ofString = getMethods(ChatHexColor, ChatHexColor, String.class).get(0);
-            ChatHoverable_serialize = getMethods(ChatHoverable, JsonObject.class).get(0);
-            ChatHoverable_getValue = getMethods(ChatHoverable, Object.class, EnumHoverAction).get(0);
             EnumHoverAction_fromJson = getMethods(EnumHoverAction, ChatHoverable, JsonElement.class).get(0);
             EnumHoverAction_fromLegacyComponent = getMethods(EnumHoverAction, ChatHoverable, IChatBaseComponent).get(0);
         } else {
             newChatModifier = ChatModifier.getConstructor();
             newChatHoverable = ChatHoverable.getConstructor(EnumHoverAction, IChatBaseComponent);
             ChatModifier_color = getFields(ChatModifier, EnumChatFormat).get(0);
-            ChatHoverable_getValue = getMethods(ChatHoverable, IChatBaseComponent).get(0);
         }
     }
 
@@ -459,6 +445,7 @@ public final class NMSStorage {
         Class<?> ScoreboardTeam = getNMSClass("net.minecraft.world.scores.ScoreboardTeam", "ScoreboardTeam");
         newScoreboardTeam = ScoreboardTeam.getConstructor(Scoreboard, String.class);
         PacketPlayOutScoreboardTeam_NAME = getFields(PacketPlayOutScoreboardTeam, String.class).get(0);
+        PacketPlayOutScoreboardTeam_ACTION = getInstanceFields(PacketPlayOutScoreboardTeam, int.class).get(0);
         PacketPlayOutScoreboardTeam_PLAYERS = getFields(PacketPlayOutScoreboardTeam, Collection.class).get(0);
         ScoreboardTeam_getPlayerNameSet = getMethods(ScoreboardTeam, Collection.class).get(0);
         ScoreboardTeam_setAllowFriendlyFire = getMethod(ScoreboardTeam, new String[]{"setAllowFriendlyFire", "a", "func_96660_a"}, boolean.class);
@@ -494,9 +481,12 @@ public final class NMSStorage {
 
     /**
      * Returns class with given potential names in same order
-     * @param names - possible class names
-     * @return class for specified name(s)
-     * @throws ClassNotFoundException if class does not exist
+     *
+     * @param   names
+     *          possible class names
+     * @return  class for specified names
+     * @throws  ClassNotFoundException
+     *          if class does not exist
      */
     private Class<?> getNMSClass(String fullPath_1_17, String... names) throws ClassNotFoundException {
         if (minorVersion >= 17) {
@@ -514,9 +504,12 @@ public final class NMSStorage {
 
     /**
      * Returns class from given name
-     * @param name - class name
-     * @return class from given name
-     * @throws ClassNotFoundException if class was not found
+     *
+     * @param   name
+     *          class name
+     * @return  class from given name
+     * @throws  ClassNotFoundException
+     *          if class was not found
      */
     private Class<?> getLegacyClass(String name) throws ClassNotFoundException {
         try {
@@ -536,11 +529,16 @@ public final class NMSStorage {
 
     /**
      * Returns method with specified possible names and parameters. Throws exception if no such method was found
-     * @param clazz - class to get method from
-     * @param names - possible method names
-     * @param parameterTypes - parameter types of the method
-     * @return method with specified name and parameters
-     * @throws NoSuchMethodException if no such method exists
+     *
+     * @param   clazz
+     *          lass to get method from
+     * @param   names
+     *          possible method names
+     * @param   parameterTypes
+     *          parameter types of the method
+     * @return  method with specified name and parameters
+     * @throws  NoSuchMethodException
+     *          if no such method exists
      */
     private Method getMethod(Class<?> clazz, String[] names, Class<?>... parameterTypes) throws NoSuchMethodException {
         for (String name : names) {
@@ -604,9 +602,12 @@ public final class NMSStorage {
 
     /**
      * Returns all fields of class with defined class type
-     * @param clazz - class to check fields of
-     * @param type - field type to check for
-     * @return list of all fields with specified class type
+     *
+     * @param   clazz
+     *          class to check fields of
+     * @param   type
+     *          field type to check for
+     * @return  list of all fields with specified class type
      */
     private List<Field> getFields(Class<?> clazz, Class<?> type){
         if (clazz == null) throw new IllegalArgumentException("Source class cannot be null");
@@ -620,11 +621,35 @@ public final class NMSStorage {
     }
 
     /**
+     * Returns all instance fields of class with defined class type
+     *
+     * @param   clazz
+     *          class to check fields of
+     * @param   type
+     *          field type to check for
+     * @return  list of all fields with specified class type
+     */
+    public List<Field> getInstanceFields(Class<?> clazz, Class<?> type){
+        if (clazz == null) throw new IllegalArgumentException("Source class cannot be null");
+        List<Field> list = new ArrayList<>();
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.getType() == type && !Modifier.isStatic(field.getModifiers())) {
+                list.add(setAccessible(field));
+            }
+        }
+        return list;
+    }
+
+    /**
      * Returns field with specified name and makes it accessible
-     * @param clazz - class to get field from
-     * @param name - field name
-     * @return accessible field with defined name
-     * @throws NoSuchFieldException if field was not found
+     *
+     * @param   clazz
+     *          class to get field from
+     * @param   name
+     *          field name
+     * @return  accessible field with defined name
+     * @throws  NoSuchFieldException
+     *          if field was not found
      */
     private Field getField(Class<?> clazz, String name) throws NoSuchFieldException {
         for (Field f : clazz.getDeclaredFields()) {

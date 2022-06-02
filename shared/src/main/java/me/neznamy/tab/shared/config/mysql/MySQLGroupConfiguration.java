@@ -2,6 +2,7 @@ package me.neznamy.tab.shared.config.mysql;
 
 import me.neznamy.tab.api.PropertyConfiguration;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.config.MySQL;
 
 import javax.sql.rowset.CachedRowSet;
@@ -10,12 +11,11 @@ import java.util.*;
 
 public class MySQLGroupConfiguration implements PropertyConfiguration {
 
-    private static final String DEFAULT_GROUP = "_DEFAULT_";
     private final MySQL mysql;
 
-    private final Map<String, Map<String, String>> values = new HashMap<>();
-    private final Map<String, Map<String, Map<String, String>>> perWorld = new HashMap<>();
-    private final Map<String, Map<String, Map<String, String>>> perServer = new HashMap<>();
+    private final Map<String, Map<String, Object>> values = new HashMap<>();
+    private final Map<String, Map<String, Map<String, Object>>> perWorld = new HashMap<>();
+    private final Map<String, Map<String, Map<String, Object>>> perServer = new HashMap<>();
 
     public MySQLGroupConfiguration(MySQL mysql) throws SQLException {
         this.mysql = mysql;
@@ -23,23 +23,24 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
         CachedRowSet crs = mysql.getCRS("select * from tab_groups");
         while (crs.next()) {
             String group = crs.getString("group");
+            if (!group.equals(TabConstants.DEFAULT_GROUP)) group = group.toLowerCase(Locale.US);
             String property = crs.getString("property");
             String value = crs.getString("value");
             String world = crs.getString("world");
             String server = crs.getString("server");
-            TAB.getInstance().debug("Loaded group: " + String.format("%s, %s, %s, %s, %s", group, property, value, world, server));
             setProperty0(group, property, server, world, value);
         }
     }
 
     @Override
     public void setProperty(String group, String property, String server, String world, String value) {
+        String lowercaseGroup = group.equals(TabConstants.DEFAULT_GROUP) ? group : group.toLowerCase(Locale.US);
         try {
-            if (getProperty(group, property, server, world) != null) {
-                mysql.execute("delete from `tab_groups` where `group` = ? and `property` = ? and world " + querySymbol(world == null) + " ? and server " + querySymbol(server == null) + " ?", group, property, world, server);
+            if (getProperty(lowercaseGroup, property, server, world) != null) {
+                mysql.execute("delete from `tab_groups` where `group` = ? and `property` = ? and world " + querySymbol(world == null) + " ? and server " + querySymbol(server == null) + " ?", lowercaseGroup, property, world, server);
             }
-            setProperty0(group, property, server, world, value);
-            if (value != null) mysql.execute("insert into `tab_groups` (`group`, `property`, `value`, `world`, `server`) values (?, ?, ?, ?, ?)", group, property, value, world, server);
+            setProperty0(lowercaseGroup, property, server, world, value);
+            if (value != null) mysql.execute("insert into `tab_groups` (`group`, `property`, `value`, `world`, `server`) values (?, ?, ?, ?, ?)", lowercaseGroup, property, value, world, server);
         } catch (SQLException e) {
             TAB.getInstance().getErrorManager().printError("Failed to execute MySQL query", e);
         }
@@ -50,10 +51,10 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
     }
 
     private void setProperty0(String group, String property, String server, String world, String value) {
-        if (server != null) {
-            perServer.computeIfAbsent(server, s -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
-        } else if (world != null) {
+        if (world != null) {
             perWorld.computeIfAbsent(world, w -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
+        } else if (server != null) {
+            perServer.computeIfAbsent(server, s -> new HashMap<>()).computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
         } else {
             values.computeIfAbsent(group, g -> new HashMap<>()).put(property, value);
         }
@@ -61,24 +62,25 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
 
     @Override
     public String[] getProperty(String group, String property, String server, String world) {
-        String value;
-        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(group, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s,server=%s", group, server)};
+        String lowercaseGroup = group.equals(TabConstants.DEFAULT_GROUP) ? group : group.toLowerCase(Locale.US);
+        Object value;
+        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,world=%s", lowercaseGroup, world)};
         }
-        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s,server=%s", DEFAULT_GROUP, server)};
+        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,world=%s", TabConstants.DEFAULT_GROUP, world)};
         }
-        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(group, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s,world=%s", group, world)};
+        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,server=%s", lowercaseGroup, server)};
         }
-        if ((value = perWorld.getOrDefault(world, new HashMap<>()).getOrDefault(DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s,world=%s", DEFAULT_GROUP, world)};
+        if ((value = perServer.getOrDefault(server, new HashMap<>()).getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s,server=%s", TabConstants.DEFAULT_GROUP, server)};
         }
-        if ((value = values.getOrDefault(group, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s", group)};
+        if ((value = values.getOrDefault(lowercaseGroup, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s", lowercaseGroup)};
         }
-        if ((value = values.getOrDefault(DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
-            return new String[] {value, String.format("group=%s", DEFAULT_GROUP)};
+        if ((value = values.getOrDefault(TabConstants.DEFAULT_GROUP, new HashMap<>()).get(property)) != null) {
+            return new String[] {toString(value), String.format("group=%s", TabConstants.DEFAULT_GROUP)};
         }
         return new String[0];
     }
@@ -91,17 +93,17 @@ public class MySQLGroupConfiguration implements PropertyConfiguration {
     }
 
     @Override
-    public Map<String, String> getGlobalSettings(String name) {
+    public Map<String, Object> getGlobalSettings(String name) {
         return values.getOrDefault(name, Collections.emptyMap());
     }
 
     @Override
-    public Map<String, Map<String, String>> getPerWorldSettings(String name) {
+    public Map<String, Map<String, Object>> getPerWorldSettings(String name) {
         return convertMap(perWorld, name);
     }
 
     @Override
-    public Map<String, Map<String, String>> getPerServerSettings(String name) {
+    public Map<String, Map<String, Object>> getPerServerSettings(String name) {
         return convertMap(perServer, name);
     }
 
