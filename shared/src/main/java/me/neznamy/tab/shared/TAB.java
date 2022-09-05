@@ -115,7 +115,6 @@ public class TAB extends TabAPI {
         this.serverVersionString = serverVersionString;
         this.dataFolder = dataFolder;
         this.logger = logger;
-        TabAPI.setInstance(this);
         try {
             Class.forName("org.geysermc.floodgate.api.FloodgateApi");
             floodgate = true;
@@ -189,7 +188,7 @@ public class TAB extends TabAPI {
             if (configuration.getMysql() != null) configuration.getMysql().closeConnection();
             featureManager.unload();
             sendConsoleMessage("&aDisabled in " + (System.currentTimeMillis()-time) + "ms", true);
-        } catch (Exception e) {
+        } catch (Exception | NoClassDefFoundError e) {
             errorManager.criticalError("Failed to disable", e);
         }
         kill();
@@ -336,15 +335,6 @@ public class TAB extends TabAPI {
      */
     public Configs getConfiguration() {
         return configuration;
-    }
-
-    /**
-     * Returns {@link #disabled}
-     *
-     * @return  {@link #disabled}
-     */
-    public boolean isDisabled() {
-        return disabled;
     }
 
     /**
@@ -498,7 +488,12 @@ public class TAB extends TabAPI {
 
     @Override
     public void debug(String message) {
-        if (configuration.isDebugMode()) sendConsoleMessage("&9[DEBUG] " + message, true);
+        if (configuration != null && configuration.isDebugMode()) sendConsoleMessage("&9[DEBUG] " + message, true);
+    }
+
+    @Override
+    public boolean isPluginDisabled() {
+        return disabled;
     }
 
     @Override

@@ -6,11 +6,11 @@ import java.util.List;
 
 import me.neznamy.tab.shared.ITabPlayer;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 import me.neznamy.tab.shared.features.sorting.Sorting;
 
 /**
- * Sorting by permission nodes tab.sort.<name>, where names are defined in sorting list
+ * Sorting by permission nodes tab.sort.&lt;name&gt;, where names are defined in sorting list
  */
 public class Permissions extends SortingType {
 

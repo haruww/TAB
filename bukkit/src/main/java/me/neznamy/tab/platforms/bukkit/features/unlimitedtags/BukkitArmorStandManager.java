@@ -3,7 +3,7 @@ package me.neznamy.tab.platforms.bukkit.features.unlimitedtags;
 import me.neznamy.tab.api.ArmorStand;
 import me.neznamy.tab.api.ArmorStandManager;
 import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 import me.neznamy.tab.shared.features.nametags.unlimited.NameTagX;
 
 import java.util.ArrayList;
@@ -16,27 +16,34 @@ import java.util.Map;
  */
 public class BukkitArmorStandManager implements ArmorStandManager {
 
-    private final NameTagX nameTagX;
-    //map of registered armor stands
+    /** Map of registered armor stands by name */
     private final Map<String, ArmorStand> armorStands = new LinkedHashMap<>();
 
-    //players in entity tracking range
-    private final List<TabPlayer> nearbyPlayers = new ArrayList<>();
-
-    //array to iterate over to avoid concurrent modification and slightly boost performance & memory
+    /** Armor stands in an array for speed while iterating */
     private ArmorStand[] armorStandArray = new ArmorStand[0];
 
+    /** Players in entity tracking range of owner */
+    private final List<TabPlayer> nearbyPlayers = new ArrayList<>();
+
+    /** Nearby players in an array for speed while iterating */
     private TabPlayer[] nearbyPlayerArray = new TabPlayer[0];
 
+    /**
+     * Constructs new instance with given parameters and loads armor stands.
+     *
+     * @param   nameTagX
+     *          Main feature
+     * @param   owner
+     *          Owner of this armor stand manager
+     */
     public BukkitArmorStandManager(NameTagX nameTagX, TabPlayer owner) {
-        this.nameTagX = nameTagX;
         owner.setProperty(nameTagX, TabConstants.Property.NAMETAG, owner.getProperty(TabConstants.Property.TAGPREFIX).getCurrentRawValue()
                 + owner.getProperty(TabConstants.Property.CUSTOMTAGNAME).getCurrentRawValue()
                 + owner.getProperty(TabConstants.Property.TAGSUFFIX).getCurrentRawValue());
         double height = 0;
         for (String line : nameTagX.getDynamicLines()) {
             addArmorStand(line, new BukkitArmorStand(this, owner, line, height, false));
-            height += nameTagX.getSpaceBetweenLines();
+            height += 0.26;
         }
         for (Map.Entry<String, Object> line : nameTagX.getStaticLines().entrySet()) {
             addArmorStand(line.getKey(), new BukkitArmorStand(this, owner, line.getKey(), Double.parseDouble(line.getValue().toString()), true));
@@ -63,7 +70,7 @@ public class BukkitArmorStandManager implements ArmorStandManager {
 
     /**
      * Returns array of nearby players
-     * @return array of nearby players
+     * @return  array of nearby players
      */
     public TabPlayer[] getNearbyPlayers(){
         return nearbyPlayerArray;
@@ -81,11 +88,11 @@ public class BukkitArmorStandManager implements ArmorStandManager {
     }
 
     /**
-     * Returns true if manager contains armor stand with specified entity id, false if not
+     * Returns {@code true} if manager contains armor stand with specified entity id, {@code false} if not
      *
      * @param   entityId
      *          entity id
-     * @return  true if armor stand with specified entity id exists, false if not
+     * @return  {@code true} if armor stand with specified entity id exists, {@code false} if not
      */
     public boolean hasArmorStandWithID(int entityId) {
         for (ArmorStand a : armorStandArray) {
@@ -134,11 +141,11 @@ public class BukkitArmorStandManager implements ArmorStandManager {
      * Fixes heights of all armor stands due to dynamic lines
      */
     public void fixArmorStandHeights() {
-        double currentY = -nameTagX.getSpaceBetweenLines();
+        double currentY = -0.26;
         for (ArmorStand as : armorStandArray) {
             if (as.hasStaticOffset()) continue;
             if (as.getProperty().get().length() != 0) {
-                currentY += nameTagX.getSpaceBetweenLines();
+                currentY += 0.26;
                 as.setOffset(currentY);
             }
         }

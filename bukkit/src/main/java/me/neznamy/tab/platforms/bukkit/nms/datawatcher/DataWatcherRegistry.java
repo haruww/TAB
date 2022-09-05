@@ -1,21 +1,27 @@
 package me.neznamy.tab.platforms.bukkit.nms.datawatcher;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
-
 import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
+
+import java.util.Map;
 
 /**
  * A class representing the n.m.s.DataWatcherRegistry class to make work with it much easier
  */
 public class DataWatcherRegistry {
 
+    /** Byte encoder */
     private Object registryByte;
+
+    /** Float encoder */
     private Object registryFloat;
+
+    /** String encoder */
     private Object registryString;
+
+    /** Encoder for optional component */
     private Object registryOptionalIChatBaseComponent;
+
+    /** Boolean encoder */
     private Object registryBoolean;
 
     /**
@@ -23,57 +29,65 @@ public class DataWatcherRegistry {
      */
     public DataWatcherRegistry(NMSStorage nms) {
         if (nms.getMinorVersion() >= 9) {
-            Map<String, Object> fields = getStaticFields(nms.DataWatcherRegistry, nms);
-            registryByte = fields.get("a");
-            registryFloat = fields.get("c");
-            registryString = fields.get("d");
-            if (nms.getMinorVersion() >= 13) {
-                registryOptionalIChatBaseComponent = fields.get("f");
-                registryBoolean = fields.get("i");
+            Map<String, Object> fields = nms.getStaticFields(nms.DataWatcherRegistry);
+            if (fields.containsKey("a")) {
+                // Bukkit mapping
+                registryByte = fields.get("a");
+                registryFloat = fields.get("c");
+                registryString = fields.get("d");
+                if (nms.getMinorVersion() >= 13) {
+                    registryOptionalIChatBaseComponent = fields.get("f");
+                    registryBoolean = fields.get("i");
+                } else {
+                    registryBoolean = fields.get("h");
+                }
             } else {
-                registryBoolean = fields.get("h");
+                // Mojang mapping
+                registryByte = fields.get("BYTE");
+                registryFloat = fields.get("FLOAT");
+                registryString = fields.get("STRING");
+                registryOptionalIChatBaseComponent = fields.get("OPTIONAL_COMPONENT");
+                registryBoolean = fields.get("BOOLEAN");
             }
         }
     }
 
     /**
-     * Gets values of all static fields in a class
-     *
-     * @param   clazz
-     *          class to return field values from
-     * @return  map of values
+     * Returns {@link #registryByte}
+     * @return  {@link #registryByte}
      */
-    private Map<String, Object> getStaticFields(Class<?> clazz, NMSStorage nms){
-        Map<String, Object> fields = new HashMap<>();
-        for (Field field : clazz.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) {
-                nms.setAccessible(field);
-                try {
-                    fields.put(field.getName(), field.get(null));
-                } catch (IllegalAccessException e) {
-                    //this will never happen
-                }
-            }
-        }
-        return fields;
-    }
-
     public Object getByte() {
         return registryByte;
     }
 
+    /**
+     * Returns {@link #registryFloat}
+     * @return  {@link #registryFloat}
+     */
     public Object getFloat() {
         return registryFloat;
     }
 
+    /**
+     * Returns {@link #registryString}
+     * @return  {@link #registryString}
+     */
     public Object getString() {
         return registryString;
     }
 
+    /**
+     * Returns {@link #registryOptionalIChatBaseComponent}
+     * @return  {@link #registryOptionalIChatBaseComponent}
+     */
     public Object getOptionalComponent() {
         return registryOptionalIChatBaseComponent;
     }
 
+    /**
+     * Returns {@link #registryBoolean}
+     * @return  {@link #registryBoolean}
+     */
     public Object getBoolean() {
         return registryBoolean;
     }

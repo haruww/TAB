@@ -81,12 +81,18 @@ public class PlayerPlaceholderImpl extends TabPlaceholder implements PlayerPlace
      *          whether refreshing should be forced or not
      */
     private void updateValue(TabPlayer player, Object value, boolean force) {
-        String s = getReplacements().findReplacement(value == null ? lastValues.getOrDefault(player, identifier) : value.toString());
+        String s = getReplacements().findReplacement(value == null ? lastValues.getOrDefault(player, identifier) :
+                setPlaceholders(value.toString(), player));
         if (s.equals(lastValues.getOrDefault(player, identifier)) && !force) return;
         lastValues.put(player, s);
         if (TAB.getInstance().getPlaceholderManager().getTabExpansion() != null)
             TAB.getInstance().getPlaceholderManager().getTabExpansion().setPlaceholderValue(player, identifier, s);
-        if (!player.isLoaded()) return;
+        if (!player.isLoaded()) {
+            if (player.isOnline()) {
+                TAB.getInstance().getCPUManager().runTask(() -> updateValue(player, value, force));
+            }
+            return;
+        }
         Set<TabFeature> usage = TAB.getInstance().getPlaceholderManager().getPlaceholderUsage().get(identifier);
         if (usage == null) return;
         for (TabFeature f : usage) {

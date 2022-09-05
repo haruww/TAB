@@ -1,13 +1,16 @@
 package me.neznamy.tab.platforms.bukkit.features;
 
-import java.util.*;
-
+import me.neznamy.tab.api.TabAPI;
 import me.neznamy.tab.api.TabFeature;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
 import me.neznamy.tab.platforms.bukkit.nms.datawatcher.DataWatcher;
 import me.neznamy.tab.platforms.bukkit.nms.datawatcher.DataWatcherItem;
-import me.neznamy.tab.shared.TAB;
+
+import java.util.ConcurrentModificationException;
+import java.util.List;
+import java.util.Optional;
+import java.util.WeakHashMap;
 
 /**
  * A feature to disable minecraft 1.9+ feature making tamed animals
@@ -19,13 +22,13 @@ import me.neznamy.tab.shared.TAB;
  */
 public class PetFix extends TabFeature {
 
-    //nms storage
+    /** NMS Storage reference for quick access */
     private final NMSStorage nms = NMSStorage.getInstance();
 
-    //DataWatcher position of pet owner field
+    /** DataWatcher position of pet owner field */
     private final int petOwnerPosition = getPetOwnerPosition();
 
-    //logger of last interacts to prevent feature not working on 1.16
+    /** Logger of last interacts to prevent feature not working on 1.16 */
     private final WeakHashMap<TabPlayer, Long> lastInteractFix = new WeakHashMap<>();
 
     /**
@@ -45,7 +48,7 @@ public class PetFix extends TabFeature {
      */
     public PetFix() {
         super("Pet name fix", null);
-        TAB.getInstance().debug("Loaded PetFix feature");
+        TabAPI.getInstance().debug("Loaded PetFix feature");
     }
 
     /**
@@ -55,7 +58,7 @@ public class PetFix extends TabFeature {
      */
     private int getPetOwnerPosition() {
         if (nms.getMinorVersion() >= 17) {
-            //1.17.x, 1.18.x
+            //1.17.x, 1.18.x, 1.19.x
             return 18;
         } else if (nms.getMinorVersion() >= 15) {
             //1.15.x, 1.16.x
@@ -91,6 +94,13 @@ public class PetFix extends TabFeature {
         return false;
     }
 
+    /**
+     * Checks if the provided entity use action is INTERACT or not.
+     *
+     * @param   action
+     *          Action to check
+     * @return {@code true} if action is INTERACT, {@code false} if not.
+     */
     private boolean isInteract(Object action) {
         if (nms.getMinorVersion() >= 17) {
             return nms.PacketPlayInUseEntity$d.isInstance(action);

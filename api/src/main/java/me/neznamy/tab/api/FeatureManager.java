@@ -1,5 +1,7 @@
 package me.neznamy.tab.api;
 
+import java.util.UUID;
+
 /**
  * Feature manager allows registration and work with features.
  */
@@ -41,4 +43,74 @@ public interface FeatureManager {
      * @return  the feature or null if feature does not exist
      */
     TabFeature getFeature(String name);
+
+    /**
+     * Calls onQuit(TabPlayer) to all enabled features
+     *
+     * @param   disconnectedPlayer
+     *          player who disconnected
+     */
+    void onQuit(TabPlayer disconnectedPlayer);
+
+    /**
+     * Calls onJoin(TabPlayer) to all enabled features
+     *
+     * @param   connectedPlayer
+     *          player who connected
+     */
+    void onJoin(TabPlayer connectedPlayer);
+
+    /**
+     * Calls onServerChange(TabPlayer, String, String) to all enabled features
+     *
+     * @param   playerUUID
+     *          player who switched server
+     * @param   to
+     *          name of the new server
+     */
+    void onServerChange(UUID playerUUID, String to);
+
+    /**
+     * Calls onWorldChange(TabPlayer, String, String) to all enabled features
+     *
+     * @param   playerUUID
+     *          player who switched world
+     * @param   to
+     *          name of the new world
+     */
+    void onWorldChange(UUID playerUUID, String to);
+
+    /**
+     * Calls onCommand(TabPlayer, String) to all enabled features
+     *
+     * @param   sender
+     *          command sender
+     * @param   command
+     *          command line including /
+     * @return  {@code true} if some feature marked the command for cancel, {@code false} if not
+     */
+    boolean onCommand(TabPlayer sender, String command);
+
+    /**
+     * Internal function that marks objective packet deserialization
+     * when at least 1 feature uses it.
+     * <p>
+     * Internal use only.
+     */
+    void markObjective();
+
+    /**
+     * Internal function that marks display objective packet deserialization
+     * when at least 1 feature uses it.
+     * <p>
+     * Internal use only.
+     */
+    void markDisplayObjective();
+
+    /**
+     * Returns array of all currently enabled features
+     *
+     * @return  array of all currently enabled features
+     */
+    TabFeature[] getValues();
 }

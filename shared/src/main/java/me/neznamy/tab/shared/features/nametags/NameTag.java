@@ -9,9 +9,10 @@ import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.protocol.PacketPlayOutScoreboardTeam;
 import me.neznamy.tab.api.team.TeamManager;
 import me.neznamy.tab.api.util.Preconditions;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 import me.neznamy.tab.shared.ITabPlayer;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.features.TabExpansion;
 import me.neznamy.tab.shared.features.redis.RedisSupport;
 import me.neznamy.tab.shared.features.layout.LayoutManager;
 import me.neznamy.tab.shared.features.sorting.Sorting;
@@ -20,6 +21,7 @@ public class NameTag extends TabFeature implements TeamManager {
 
     private final boolean invisibleNameTags = TAB.getInstance().getConfiguration().getConfig().getBoolean("scoreboard-teams.invisible-nametags", false);
     private final boolean collisionRule = TAB.getInstance().getConfiguration().getConfig().getBoolean("scoreboard-teams.enable-collision", true);
+    private final boolean canSeeFriendlyInvisibles = TAB.getInstance().getConfig().getBoolean("scoreboard-teams.can-see-friendly-invisibles", false);
     private final Sorting sorting = new Sorting(this);
     private final CollisionManager collisionManager = new CollisionManager(this, collisionRule);
 
@@ -45,6 +47,7 @@ public class NameTag extends TabFeature implements TeamManager {
 
     @Override
     public void load(){
+        TabExpansion expansion = TAB.getInstance().getPlaceholderManager().getTabExpansion();
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             ((ITabPlayer) all).setTeamName(getSorting().getTeamName(all));
             updateProperties(all);
@@ -54,6 +57,7 @@ public class NameTag extends TabFeature implements TeamManager {
                 continue;
             }
             registerTeam(all);
+            if (expansion != null) expansion.setNameTagVisibility(all, true);
         }
     }
 
@@ -97,6 +101,10 @@ public class NameTag extends TabFeature implements TeamManager {
             if (!isDisabledPlayer(all)) {
                 registerTeam(all, connectedPlayer);
             }
+        }
+        TabExpansion expansion = TAB.getInstance().getPlaceholderManager().getTabExpansion();
+        if (expansion != null) {
+            expansion.setNameTagVisibility(connectedPlayer, true);
         }
         if (isDisabled(connectedPlayer.getServer(), connectedPlayer.getWorld())) {
             addDisabledPlayer(connectedPlayer);
@@ -238,7 +246,7 @@ public class NameTag extends TabFeature implements TeamManager {
             String currentPrefix = tagPrefix.getFormat(viewer);
             String currentSuffix = tagSuffix.getFormat(viewer);
             boolean visible = getTeamVisibility(p, viewer);
-            viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
+            viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), getTeamOptions()), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
         }
         RedisSupport redis = (RedisSupport) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.REDIS_BUNGEE);
         if (redis != null) redis.updateNameTag(p, p.getProperty(TabConstants.Property.TAGPREFIX).get(), p.getProperty(TabConstants.Property.TAGSUFFIX).get());
@@ -248,7 +256,7 @@ public class NameTag extends TabFeature implements TeamManager {
         boolean visible = getTeamVisibility(p, viewer);
         String currentPrefix = p.getProperty(TabConstants.Property.TAGPREFIX).getFormat(viewer);
         String currentSuffix = p.getProperty(TabConstants.Property.TAGSUFFIX).getFormat(viewer);
-        viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
+        viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), currentPrefix, currentSuffix, translate(visible), translate(collisionManager.getCollision(p)), getTeamOptions()), TabConstants.PacketCategory.NAMETAGS_TEAM_UPDATE);
     }
 
     public void unregisterTeam(TabPlayer p) {
@@ -269,7 +277,7 @@ public class NameTag extends TabFeature implements TeamManager {
         String replacedPrefix = p.getProperty(TabConstants.Property.TAGPREFIX).getFormat(viewer);
         String replacedSuffix = p.getProperty(TabConstants.Property.TAGSUFFIX).getFormat(viewer);
         viewer.sendCustomPacket(new PacketPlayOutScoreboardTeam(p.getTeamName(), replacedPrefix, replacedSuffix, translate(getTeamVisibility(p, viewer)), 
-                translate(collisionManager.getCollision(p)), Collections.singletonList(p.getNickname()), 2), TabConstants.PacketCategory.NAMETAGS_TEAM_REGISTER);
+                translate(collisionManager.getCollision(p)), Collections.singletonList(p.getNickname()), getTeamOptions()), TabConstants.PacketCategory.NAMETAGS_TEAM_REGISTER);
     }
 
     private void updateTeam(TabPlayer p) {
@@ -309,6 +317,10 @@ public class NameTag extends TabFeature implements TeamManager {
 
     public CollisionManager getCollisionManager() {
         return collisionManager;
+    }
+
+    public int getTeamOptions() {
+        return canSeeFriendlyInvisibles ? 2 : 0;
     }
 
     @Override
@@ -371,6 +383,10 @@ public class NameTag extends TabFeature implements TeamManager {
         } else {
             playersWithInvisibleNameTagView.add(player);
             if (sendToggleMessage) player.sendMessage(TAB.getInstance().getConfiguration().getMessages().getNameTagsHidden(), true);
+        }
+        TabExpansion expansion = TAB.getInstance().getPlaceholderManager().getTabExpansion();
+        if (expansion != null) {
+            expansion.setNameTagVisibility(player, !playersWithInvisibleNameTagView.contains(player));
         }
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             updateTeamData(all, player);

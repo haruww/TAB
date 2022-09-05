@@ -1,16 +1,6 @@
 package me.neznamy.tab.platforms.bukkit.features.unlimitedtags;
 
-import java.util.UUID;
-
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Pose;
-
-import me.neznamy.tab.api.ArmorStand;
-import me.neznamy.tab.api.Property;
-import me.neznamy.tab.api.TabPlayer;
+import me.neznamy.tab.api.*;
 import me.neznamy.tab.api.chat.EnumChatFormat;
 import me.neznamy.tab.api.chat.IChatBaseComponent;
 import me.neznamy.tab.api.protocol.TabPacket;
@@ -19,52 +9,72 @@ import me.neznamy.tab.platforms.bukkit.nms.PacketPlayOutEntityMetadata;
 import me.neznamy.tab.platforms.bukkit.nms.PacketPlayOutEntityTeleport;
 import me.neznamy.tab.platforms.bukkit.nms.PacketPlayOutSpawnEntityLiving;
 import me.neznamy.tab.platforms.bukkit.nms.datawatcher.DataWatcher;
-import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.tab.shared.TAB;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Pose;
+
+import java.util.UUID;
 
 /**
- * A class representing an armor stand attached to a player (if the feature is enabled)
+ * A class representing an armor stand attached to a player
  */
 public class BukkitArmorStand implements ArmorStand {
 
-    //entity id counter to pick unique entity IDs
+    /** Entity id counter to pick unique entity ID for each armor stand */
     private static int idCounter = 2000000000;
 
-    //NameTag feature
-    private final BukkitNameTagX manager = (BukkitNameTagX) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.UNLIMITED_NAME_TAGS);
+    /** NameTag feature */
+    private final BukkitNameTagX manager = (BukkitNameTagX) TabAPI.getInstance().getFeatureManager().getFeature(TabConstants.Feature.UNLIMITED_NAME_TAGS);
 
+    /** Armor stand manager which this armor stand belongs to */
     private final BukkitArmorStandManager asm;
     
-    //owner of the armor stand
+    /** Owner of the armor stand */
     private final TabPlayer owner;
 
-    //instance of Bukkit player
+    /** Owner as a Bukkit player */
     private final Player player;
 
-    //offset in blocks, 0 for original height
+    /** Offset in blocks, 0 for original height */
     private double yOffset;
 
-    //entity ID of this armor stand
-    private final int entityId = idCounter++;
-
-    //unique ID of this armor stand
-    private final UUID uuid = UUID.randomUUID();
-
-    //sneaking flag of armor stands
-    private boolean sneaking;
-
-    //armor stand visibility
-    private boolean visible;
-
-    //property dedicated to this armor stand
-    private final Property property;
-
-    //if offset is static or dynamic based on other armor stands
+    /** If offset is static, or dynamic based on other armor stands */
     private final boolean staticOffset;
 
-    //entity destroy packet
+    /** Entity ID of this armor stand */
+    private final int entityId = idCounter++;
+
+    /** Unique ID of this armor stand */
+    private final UUID uuid = UUID.randomUUID();
+
+    /** Sneaking flag of armor stands */
+    private boolean sneaking;
+
+    /** Armor stand visibility */
+    private boolean visible;
+
+    /** Refresh property dedicated to this armor stand */
+    private final Property property;
+
+    /** Entity destroy packet */
     private final PacketPlayOutEntityDestroy destroyPacket = new PacketPlayOutEntityDestroy(entityId);
 
+    /**
+     * Constructs new instance with given parameters.
+     *
+     * @param   asm
+     *          Armor stand manager which this armor stand belongs to
+     * @param   owner
+     *          Owner of the armor stand
+     * @param   propertyName
+     *          Name of refresh property to use
+     * @param   yOffset
+     *          Offset in blocks
+     * @param   staticOffset
+     *          {@code true} if offset is static, {@code false} if not
+     */
     public BukkitArmorStand(BukkitArmorStandManager asm, TabPlayer owner, String propertyName, double yOffset, boolean staticOffset) {
         this.asm = asm;
         this.owner = owner;
@@ -73,6 +83,7 @@ public class BukkitArmorStand implements ArmorStand {
         this.yOffset = yOffset;
         this.property = owner.getProperty(propertyName);
         visible = getVisibility();
+        sneaking = player.isSneaking();
     }
 
     @Override
@@ -193,7 +204,7 @@ public class BukkitArmorStand implements ArmorStand {
     /**
      * Returns general visibility rule for everyone with limited info
      *
-     * @return  true if armor stand should be visible, false if not
+     * @return  {@code true} if armor stand should be visible, {@code false} if not
      */
     public boolean getVisibility() {
         if (manager.isArmorStandsAlwaysVisible()) return true;
@@ -202,22 +213,32 @@ public class BukkitArmorStand implements ArmorStand {
     }
 
     /**
-     * Returns general location where armor stand should be at time of calling
+     * Returns location where armor stand should be at time of calling.
+     * This takes into account everything that affects height, including
+     * viewer's game version.
      *
-     * @return  Location where armor stand should be for everyone
+     * @param   viewer
+     *          Player looking at the armor stand
+     * @return  Location where armor stand should be for specified viewer
      */
-    public Location getLocation() {
+    public Location getLocation(TabPlayer viewer) {
         double x = player.getLocation().getX();
-        double y = getY() + yOffset + 2;
+        double y = getY() + yOffset;
         double z = player.getLocation().getZ();
-        if (player.isSleeping()) {
-            y -= 1.76;
-        } else {
-            if (TAB.getInstance().getServerVersion().getMinorVersion() >= 9) {
-                y -= (sneaking ? 0.45 : 0.18);
+        if (!player.isSleeping()) {
+            if (sneaking) {
+                if (viewer.getVersion().getMinorVersion() >= 15) {
+                    y += 1.37;
+                } else if (viewer.getVersion().getMinorVersion() >= 9) {
+                    y += 1.52;
+                } else {
+                    y += 1.7;
+                }
             } else {
-                y -= (sneaking ? 0.30 : 0.18);
+                y += viewer.getVersion().getMinorVersion() >= 9 ? 1.8 : 1.84; // Normal
             }
+        } else {
+            y += viewer.getVersion().getMinorVersion() >= 9 ? 0.2 : 0.26; // Sleeping
         }
         return new Location(null,x,y,z);
     }
@@ -245,15 +266,19 @@ public class BukkitArmorStand implements ArmorStand {
             }
         }
         //1.13+ swimming or 1.9+ flying with elytra
-        if (isSwimming() || (TAB.getInstance().getServerVersion().getMinorVersion() >= 9 && player.isGliding())) {
+        if (isSwimming() || (TabAPI.getInstance().getServerVersion().getMinorVersion() >= 9 && player.isGliding())) {
             return player.getLocation().getY()-1.22;
         }
         return player.getLocation().getY();
     }
 
+    /**
+     * Returns {@code true} if owner is swimming, {@code false} if not
+     * @return  {@code true} if owner is swimming, {@code false} if not
+     */
     private boolean isSwimming() {
-        if (TAB.getInstance().getServerVersion().getMinorVersion() >= 14 && player.getPose() == Pose.SWIMMING) return true;
-        return TAB.getInstance().getServerVersion().getMinorVersion() == 13 && player.isSwimming();
+        if (TabAPI.getInstance().getServerVersion().getMinorVersion() >= 14 && player.getPose() == Pose.SWIMMING) return true;
+        return TabAPI.getInstance().getServerVersion().getMinorVersion() == 13 && player.isSwimming();
     }
 
     /**
@@ -287,11 +312,12 @@ public class BukkitArmorStand implements ArmorStand {
     }
 
     /**
-     * Returns true if display name is in fact empty, for example only containing color codes
+     * Returns {@code true} if display name is in fact empty,
+     * for example only containing color codes, {@code false} if not.
      *
      * @param   displayName
      *          string to check
-     * @return  true if it's empty, false if not
+     * @return  {@code true} if it's empty, {@code false} if not
      */
     private boolean isNameVisiblyEmpty(String displayName) {
         if (displayName.length() == 0) return true;
@@ -311,7 +337,7 @@ public class BukkitArmorStand implements ArmorStand {
     public TabPacket[] getSpawnPackets(TabPlayer viewer) {
         visible = getVisibility();
         DataWatcher dataWatcher = createDataWatcher(property.getFormat(viewer), viewer);
-        if (TAB.getInstance().getServerVersion().getMinorVersion() >= 15) {
+        if (TabAPI.getInstance().getServerVersion().getMinorVersion() >= 15) {
             return new TabPacket[] {
                     new PacketPlayOutSpawnEntityLiving(entityId, uuid, EntityType.ARMOR_STAND, getArmorStandLocationFor(viewer), null),
                     new PacketPlayOutEntityMetadata(entityId, dataWatcher)
@@ -331,7 +357,7 @@ public class BukkitArmorStand implements ArmorStand {
      * @return  location of armor stand
      */
     public Location getArmorStandLocationFor(TabPlayer viewer) {
-        return viewer.getVersion().getMinorVersion() == 8 && !manager.isMarkerFor18x() ? getLocation().clone().add(0,-2,0) : getLocation();
+        return viewer.getVersion().getMinorVersion() == 8 && !manager.isMarkerFor18x() ? getLocation(viewer).add(0,-2,0) : getLocation(viewer);
     }
 
     @Override

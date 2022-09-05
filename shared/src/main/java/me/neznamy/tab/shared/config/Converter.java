@@ -4,7 +4,7 @@ import me.neznamy.tab.api.ProtocolVersion;
 import me.neznamy.tab.api.config.ConfigurationFile;
 import me.neznamy.tab.api.config.YamlConfigurationFile;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +25,7 @@ public class Converter {
      * The method contains a check if the conversion is necessary, so it is always safe
      * to call this method, even if conversion is not needed.
      * <p>
-     * This change was made from 2.8.10 -> 2.9.0
+     * This change was made from 2.8.10 -&gt; 2.9.0
      *
      * @param   animations
      *          animation file to convert

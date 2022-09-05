@@ -7,9 +7,10 @@ import java.util.Map;
 import me.neznamy.tab.api.TabFeature;
 import me.neznamy.tab.api.TabPlayer;
 import me.neznamy.tab.api.chat.EnumChatFormat;
+import me.neznamy.tab.api.config.ConfigurationFile;
 import me.neznamy.tab.shared.DynamicText;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 import me.neznamy.tab.shared.features.PlayerList;
 import me.neznamy.tab.shared.features.nametags.NameTag;
 
@@ -59,6 +60,7 @@ public class DebugCommand extends SubCommand {
         sendMessage(sender, "&6Permission plugin: &b" + TAB.getInstance().getGroupManager().getPlugin().getName());
         sendMessage(sender, "&6Permission group choice logic: &b" + getGroupChoiceLogic());
         sendMessage(sender, "&6Sorting system: &b" + getSortingType());
+        sendMessage(sender, "&6Storage type: &b" + (tab.getConfiguration().getGroups() instanceof ConfigurationFile ? "File" : "MySQL"));
         sendMessage(sender, separator);
         if (analyzed == null) return;
         sendMessage(sender, "&ePlayer: &a" + analyzed.getName());

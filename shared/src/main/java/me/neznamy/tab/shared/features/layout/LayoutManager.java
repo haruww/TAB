@@ -11,7 +11,7 @@ import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.EnumPlayerInfoAction;
 import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.PlayerInfoData;
 import me.neznamy.tab.shared.ITabPlayer;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.api.TabConstants;
 import me.neznamy.tab.shared.features.layout.skin.SkinManager;
 import me.neznamy.tab.shared.placeholders.conditions.Condition;
 
@@ -22,6 +22,7 @@ public class LayoutManager extends TabFeature {
     private final boolean enableRemainingPlayersText = TAB.getInstance().getConfiguration().getLayout().getBoolean("enable-remaining-players-text", true);
     private final String remainingPlayersText = EnumChatFormat.color(TAB.getInstance().getConfiguration().getLayout().getString("remaining-players-text", "... and %s more"));
     private final int emptySlotPing = TAB.getInstance().getConfiguration().getLayout().getInt("empty-slot-ping-value", 1000);
+    private final boolean hideVanishedPlayers = TAB.getInstance().getConfiguration().getLayout().getBoolean("hide-vanished-players", true);
     private final SkinManager skinManager = new SkinManager(defaultSkin);
 
     private final Map<Integer, UUID> uuids = new HashMap<Integer, UUID>(){{
@@ -74,19 +75,22 @@ public class LayoutManager extends TabFeature {
                 emptySlots.remove((Integer)slot);
                 if (text.length() > 0) TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.layoutSlot(layout.getKey().toString(), slot), f);
             }
-            for (Entry<String, Map<String, Object>> group : ((Map<String, Map<String, Object>>) map.get("groups")).entrySet()){
-                Condition condition = Condition.getCondition((String) group.getValue().get("condition"));
-                List<Integer> positions = new ArrayList<>();
-                for (String line : (List<String>) group.getValue().get("slots")) {
-                    String[] arr = line.split("-");
-                    int from = Integer.parseInt(arr[0]);
-                    int to = Integer.parseInt(arr[1]);
-                    for (int i = from; i<= to; i++) {
-                        positions.add(i);
+            Map<String, Map<String, Object>> groups = (Map<String, Map<String, Object>>) map.get("groups");
+            if (groups != null) {
+                for (Entry<String, Map<String, Object>> group : groups.entrySet()) {
+                    Condition condition = Condition.getCondition((String) group.getValue().get("condition"));
+                    List<Integer> positions = new ArrayList<>();
+                    for (String line : (List<String>) group.getValue().get("slots")) {
+                        String[] arr = line.split("-");
+                        int from = Integer.parseInt(arr[0]);
+                        int to = Integer.parseInt(arr[1]);
+                        for (int i = from; i<= to; i++) {
+                            positions.add(i);
+                        }
                     }
+                    parentGroups.add(new ParentGroup(l, condition, positions.stream().mapToInt(i->i).toArray()));
+                    emptySlots.removeAll(positions);
                 }
-                parentGroups.add(new ParentGroup(l, condition, positions.stream().mapToInt(i->i).toArray()));
-                emptySlots.removeAll(positions);
             }
             layoutMap.put(layout.getKey().toString(), l);
             TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.layout(layout.getKey().toString()), l);
@@ -101,6 +105,12 @@ public class LayoutManager extends TabFeature {
         if (highest != null) highest.sendTo(p);
         playerViews.put(p, highest);
         layouts.values().forEach(Layout::tick);
+
+        List<PlayerInfoData> data = new ArrayList<>();
+        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+            data.add(new PlayerInfoData(all.getTablistUUID()));
+        }
+        p.sendCustomPacket(new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.UPDATE_DISPLAY_NAME, data), this);
     }
 
     @Override
@@ -200,6 +210,10 @@ public class LayoutManager extends TabFeature {
 
     public String getDefaultSkin() {
         return defaultSkin;
+    }
+
+    public boolean isHideVanishedPlayers() {
+        return hideVanishedPlayers;
     }
 
     public enum Direction {

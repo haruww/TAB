@@ -1,35 +1,37 @@
 package me.neznamy.tab.platforms.bukkit.features.unlimitedtags;
 
+import me.neznamy.tab.api.TabAPI;
+import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.api.TabFeature;
+import me.neznamy.tab.api.TabPlayer;
+import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
-import me.neznamy.tab.shared.TabConstants;
-import me.neznamy.tab.shared.TAB;
-
 /**
- * The packet listening part for securing proper functionality of armor stands
+ * The packet listening part for securing proper functionality of armor stands.
  * Bukkit events are too unreliable and delayed/ahead which causes de-sync
+ * if trying to listen to move event.
+ * For entering/leaving tracking range there are no events and
+ * periodic / move-triggered distance checks would cause high CPU usage.
  */
 public class PacketListener extends TabFeature {
 
-    //main feature
+    /** Reference to the main feature */
     private final BukkitNameTagX nameTagX;
 
-    //player data by entityId, used for better performance
+    /** A player map by entity id, used for better performance */
     private final Map<Integer, TabPlayer> entityIdMap = new ConcurrentHashMap<>();
     
-    //nms storage
+    /** Reference to NMS storage for quick access */
     private final NMSStorage nms = NMSStorage.getInstance();
 
     /**
-     * Constructs new instance with given parameters and loads config options
+     * Constructs new instance with given parameter
      *
      * @param   nameTagX
      *          main feature
@@ -41,7 +43,7 @@ public class PacketListener extends TabFeature {
 
     @Override
     public void load() {
-        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+        for (TabPlayer all : TabAPI.getInstance().getOnlinePlayers()) {
             entityIdMap.put(((Player) all.getPlayer()).getEntityId(), all);
         }
     }
@@ -61,7 +63,7 @@ public class PacketListener extends TabFeature {
         if (sender.getVersion().getMinorVersion() == 8 && nms.PacketPlayInUseEntity.isInstance(packet)) {
             int entityId = nms.PacketPlayInUseEntity_ENTITY.getInt(packet);
             TabPlayer attacked = null;
-            for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+            for (TabPlayer all : TabAPI.getInstance().getOnlinePlayers()) {
                 if (all.isLoaded() && nameTagX.getArmorStandManager(all).hasArmorStandWithID(entityId)) {
                     attacked = all;
                     break;
@@ -101,7 +103,10 @@ public class PacketListener extends TabFeature {
     }
 
     /**
-     * Processes entity move packet
+     * Processes entity move packet. If entity ID belongs to a player,
+     * armor stands of that player are teleported to player who received the packet.
+     * If it belongs to a vehicle carrying a player, that player's armor stands are
+     * teleported as well.
      *
      * @param   receiver
      *          packet receiver
@@ -114,45 +119,81 @@ public class PacketListener extends TabFeature {
         if (pl != null) {
             //player moved
             if (nameTagX.isPlayerDisabled(pl) || !pl.isLoaded()) return;
-            TAB.getInstance().getCPUManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_MOVE,
+            TabAPI.getInstance().getThreadManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_MOVE,
                     () -> nameTagX.getArmorStandManager(pl).teleport(receiver));
         } else if ((vehicleList = nameTagX.getVehicleManager().getVehicles().get(entityId)) != null){
             //a vehicle carrying something moved
             for (Entity entity : vehicleList) {
                 TabPlayer passenger = entityIdMap.get(entity.getEntityId());
                 if (passenger != null && nameTagX.getArmorStandManager(passenger) != null) {
-                    TAB.getInstance().getCPUManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_MOVE_PASSENGER,
+                    TabAPI.getInstance().getThreadManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_MOVE_PASSENGER,
                             () -> nameTagX.getArmorStandManager(passenger).teleport(receiver));
                 }
             }
         }
     }
-    
+
+    /**
+     * Processes named entity spawn packet and spawns armor stands if
+     * entity ID belongs to an online player.
+     *
+     * @param   receiver
+     *          packet receiver
+     * @param   entityId
+     *          spawned entity
+     */
     private void onEntitySpawn(TabPlayer receiver, int entityId) {
         TabPlayer spawnedPlayer = entityIdMap.get(entityId);
         if (spawnedPlayer != null && spawnedPlayer.isLoaded() && !nameTagX.isPlayerDisabled(spawnedPlayer)) {
-            TAB.getInstance().getCPUManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_SPAWN,
+            TabAPI.getInstance().getThreadManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_SPAWN,
                     () -> nameTagX.getArmorStandManager(spawnedPlayer).spawn(receiver));
         }
     }
 
+    /**
+     * Processes entity destroy packet and destroys armor stands if
+     * entity ID belongs to an online player.
+     *
+     * @param   receiver
+     *          packet receiver
+     * @param   entities
+     *          de-spawned entities
+     */
     private void onEntityDestroy(TabPlayer receiver, List<Integer> entities) {
         for (int entity : entities) {
             onEntityDestroy(receiver, entity);
         }
     }
-    
+
+    /**
+     * Processes entity destroy packet and destroys armor stands if
+     * entity ID belongs to an online player.
+     *
+     * @param   receiver
+     *          packet receiver
+     * @param   entities
+     *          de-spawned entities
+     */
     private void onEntityDestroy(TabPlayer receiver, int... entities) {
         for (int entity : entities) {
             onEntityDestroy(receiver, entity);
         }
     }
-    
+
+    /**
+     * Processes entity destroy packet and destroys armor stands if
+     * entity ID belongs to an online player.
+     *
+     * @param   receiver
+     *          packet receiver
+     * @param   entity
+     *          de-spawned entity
+     */
     private void onEntityDestroy(TabPlayer receiver, int entity) {
         TabPlayer deSpawnedPlayer = entityIdMap.get(entity);
         if (deSpawnedPlayer != null && deSpawnedPlayer.isLoaded() && !nameTagX.isPlayerDisabled(deSpawnedPlayer)) {
             BukkitArmorStandManager asm = nameTagX.getArmorStandManager(deSpawnedPlayer);
-            TAB.getInstance().getCPUManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_DESTROY,
+            TabAPI.getInstance().getThreadManager().runMeasuredTask(nameTagX, TabConstants.CpuUsageCategory.PACKET_ENTITY_DESTROY,
                     () -> asm.destroy(receiver));
         }
     }
