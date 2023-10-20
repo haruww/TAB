@@ -1,25 +1,13 @@
 package me.neznamy.tab.shared.event.impl;
 
-import me.neznamy.tab.api.TabPlayer;
+import lombok.Data;
+import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.api.event.player.PlayerLoadEvent;
+import org.jetbrains.annotations.NotNull;
 
+@Data
 public final class PlayerLoadEventImpl implements PlayerLoadEvent {
 
-    private final TabPlayer player;
+    @NotNull private final TabPlayer player;
     private final boolean join;
-
-    public PlayerLoadEventImpl(TabPlayer player, boolean join) {
-        this.player = player;
-        this.join = join;
-    }
-
-    @Override
-    public TabPlayer getPlayer() {
-        return player;
-    }
-
-    @Override
-    public boolean isJoin() {
-        return join;
-    }
 }

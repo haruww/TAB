@@ -4,15 +4,21 @@ plugins {
 
 allprojects {
     group = "me.neznamy"
-    version = property("projectVersion") as String // from gradle.properties
+    version = "4.0.8-SNAPSHOT"
     description = "An all-in-one solution that works"
+
+    ext.set("id", "tab")
+    ext.set("website", "https://github.com/NEZNAMY/TAB")
+    ext.set("author", "NEZNAMY")
 }
 
 val platforms = setOf(
     projects.bukkit,
     projects.bungeecord,
-//    projects.krypton,
-    projects.velocity
+    projects.velocity,
+    projects.sponge7,
+    projects.sponge8,
+    projects.fabric
 ).map { it.dependencyProject }
 
 val special = setOf(

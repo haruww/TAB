@@ -2,8 +2,8 @@ package me.neznamy.tab.shared.features.sorting.types;
 
 import java.util.LinkedHashMap;
 
-import me.neznamy.tab.shared.ITabPlayer;
-import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.shared.platform.TabPlayer;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.features.sorting.Sorting;
 
 /**
@@ -12,31 +12,27 @@ import me.neznamy.tab.shared.features.sorting.Sorting;
 public class Groups extends SortingType {
 
     //map of sorted groups in config
-    private final LinkedHashMap<String, String> sortedGroups;
+    private final LinkedHashMap<String, Integer> sortedGroups;
 
     /**
      * Constructs new instance
      */
     public Groups(Sorting sorting, String options) {
-        super(sorting, TabConstants.Placeholder.GROUP);
+        super(sorting, "GROUPS", TabConstants.Placeholder.GROUP);
         sortedGroups = convertSortingElements(options.split(","));
     }
 
     @Override
-    public String getChars(ITabPlayer p) {
-        String group = p.getGroup();
-        String chars = sortedGroups.get(group.toLowerCase());
-        if (chars == null) {
-            chars = String.valueOf(sortedGroups.size()+1);
-            p.setTeamNameNote(p.getTeamNameNote() + "&cPlayer's primary group is not in sorting list. &r");
+    public String getChars(TabPlayer p) {
+        String group = p.getGroup().toLowerCase();
+        int position;
+        if (!sortedGroups.containsKey(group)) {
+            position = sortedGroups.size() + 1;
+            sorting.setTeamNameNote(p, sorting.getTeamNameNote(p) + "\n-> &cPrimary group (&e" + p.getGroup() + "&c) is not in sorting list. &r");
         } else {
-            p.setTeamNameNote(p.getTeamNameNote() + String.format("Primary group is #%s in sorting list", Integer.parseInt(chars)) + ". &r");
+            position = sortedGroups.get(group);
+            sorting.setTeamNameNote(p, sorting.getTeamNameNote(p) + "\n-> Primary group (&e" + p.getGroup() + "&r) is &a#" + position + "&r in sorting list.");
         }
-        return chars;
-    }
-
-    @Override
-    public String toString() {
-        return "GROUPS";
+        return String.valueOf((char) (position + 47));
     }
 }

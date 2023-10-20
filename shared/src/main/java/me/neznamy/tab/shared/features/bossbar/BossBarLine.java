@@ -1,54 +1,58 @@
 package me.neznamy.tab.shared.features.bossbar;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
+import lombok.Getter;
+import lombok.NonNull;
+import me.neznamy.tab.shared.features.types.Refreshable;
+import me.neznamy.tab.shared.features.types.TabFeature;
 import me.neznamy.tab.api.bossbar.BarColor;
 import me.neznamy.tab.api.bossbar.BarStyle;
 import me.neznamy.tab.api.bossbar.BossBar;
-import me.neznamy.tab.api.protocol.PacketPlayOutBoss;
+import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.placeholders.conditions.Condition;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Class representing a BossBar from configuration
  */
 public class BossBarLine implements BossBar {
 
-    private final BossBarManagerImpl manager;
-
     //BossBar name
-    private final String name;
+    @Getter private final String name;
 
     //display condition
     private final Condition displayCondition;
 
     //uuid
-    private final UUID uuid = UUID.randomUUID();
+    @Getter private final UUID uniqueId = UUID.randomUUID();
 
     //BossBar style
-    private String style;
+    @Getter private String style;
 
     //BossBar color
-    private String color;
+    @Getter private String color;
 
     //BossBar title
-    private String title;
+    @Getter private String title;
 
     //BossBar progress
-    private String progress;
+    @Getter private String progress;
 
-    private final boolean announcementOnly;
+    @Getter private final boolean announcementBar;
 
     //set of players seeing this BossBar
     private final Set<TabPlayer> players = Collections.newSetFromMap(new WeakHashMap<>());
 
     //refreshers
-    private final TabFeature textRefresher;
-    private final TabFeature progressRefresher;
-    private final TabFeature colorAndStyleRefresher;
+    private final TextRefresher textRefresher;
+    private final ProgressRefresher progressRefresher;
+    private final ColorRefresher colorRefresher;
+    private final StyleRefresher styleRefresher;
 
     //property names
     private final String propertyTitle;
@@ -74,9 +78,8 @@ public class BossBarLine implements BossBar {
      * @param   progress
      *          BossBar progress
      */
-    public BossBarLine(BossBarManagerImpl manager, String name, String displayCondition,
-                       String color, String style, String title, String progress, boolean announcementOnly) {
-        this.manager = manager;
+    public BossBarLine(@NonNull BossBarManagerImpl manager, @NonNull String name, @Nullable String displayCondition,
+                       @NonNull String color, @NonNull String style, @NonNull String title, @NonNull String progress, boolean announcementOnly) {
         this.name = name;
         this.displayCondition = Condition.getCondition(displayCondition);
         if (this.displayCondition != null) {
@@ -86,37 +89,19 @@ public class BossBarLine implements BossBar {
         this.style = style;
         this.title = title;
         this.progress = progress;
-        this.announcementOnly = announcementOnly;
+        this.announcementBar = announcementOnly;
         propertyTitle = TabConstants.Property.bossbarTitle(name);
         propertyProgress = TabConstants.Property.bossbarProgress(name);
         propertyColor = TabConstants.Property.bossbarColor(name);
         propertyStyle = TabConstants.Property.bossbarStyle(name);
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.bossBarTitle(name),
-                textRefresher = new TabFeature(manager.getFeatureName(), "Updating text") {
-            @Override
-            public void refresh(TabPlayer refreshed, boolean force) {
-                if (!players.contains(refreshed)) return;
-                refreshed.sendCustomPacket(new PacketPlayOutBoss(uuid, refreshed.getProperty(propertyTitle).updateAndGet()), TabConstants.PacketCategory.BOSSBAR_TEXT);
-            }
-        });
+                textRefresher = new TextRefresher());
         TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.bossBarProgress(name),
-                progressRefresher = new TabFeature(manager.getFeatureName(), "Updating progress") {
-            @Override
-            public void refresh(TabPlayer refreshed, boolean force) {
-                if (!players.contains(refreshed)) return;
-                refreshed.sendCustomPacket(new PacketPlayOutBoss(uuid, parseProgress(refreshed.getProperty(propertyProgress).updateAndGet())/100), TabConstants.PacketCategory.BOSSBAR_PROGRESS);
-            }
-        });
-        TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.bossBarColorStyle(name),
-                colorAndStyleRefresher = new TabFeature(manager.getFeatureName(), "Updating color and style") {
-            @Override
-            public void refresh(TabPlayer refreshed, boolean force) {
-                if (!players.contains(refreshed)) return;
-                refreshed.sendCustomPacket(new PacketPlayOutBoss(uuid,
-                        parseColor(refreshed.getProperty(propertyColor).updateAndGet()),
-                        parseStyle(refreshed.getProperty(propertyStyle).updateAndGet())), TabConstants.PacketCategory.BOSSBAR_COLOR_STYLE);
-            }
-        });
+                progressRefresher = new ProgressRefresher());
+        TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.bossBarColor(name),
+                colorRefresher = new ColorRefresher());
+        TAB.getInstance().getFeatureManager().registerFeature(TabConstants.Feature.bossBarStyle(name),
+                styleRefresher = new StyleRefresher());
     }
 
     /**
@@ -126,7 +111,7 @@ public class BossBarLine implements BossBar {
      *          player to check condition for
      * @return  true if met, false if not
      */
-    public boolean isConditionMet(TabPlayer p) {
+    public boolean isConditionMet(@NonNull TabPlayer p) {
         if (displayCondition == null) return true;
         return displayCondition.isMet(p);
     }
@@ -138,7 +123,7 @@ public class BossBarLine implements BossBar {
      *          string to parse
      * @return  parsed color
      */
-    public BarColor parseColor(String color) {
+    public @NotNull BarColor parseColor(@NonNull String color) {
         try {
             return BarColor.valueOf(color);
         } catch (IllegalArgumentException e) {
@@ -153,7 +138,7 @@ public class BossBarLine implements BossBar {
      *          string to parse
      * @return  parsed style
      */
-    public BarStyle parseStyle(String style) {
+    public @NotNull BarStyle parseStyle(@NonNull String style) {
         try {
             return BarStyle.valueOf(style);
         } catch (IllegalArgumentException e) {
@@ -169,37 +154,40 @@ public class BossBarLine implements BossBar {
      *          string to parse
      * @return  parsed progress
      */
-    public float parseProgress(String progress) {
-        return TAB.getInstance().getErrorManager().parseFloat(progress, 100);
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public UUID getUniqueId() {
-        return uuid;
-    }
-
-    @Override
-    public void setTitle(String title) {
-        if (this.title.equals(title)) return;
-        this.title = title;
-        for (TabPlayer p : players) {
-            p.setProperty(textRefresher, propertyTitle, title);
-            p.sendCustomPacket(new PacketPlayOutBoss(uuid, p.getProperty(propertyTitle).get()), manager);
+    public float parseProgress(@NonNull TabPlayer player, @NonNull String progress) {
+        try {
+            float value = Float.parseFloat(progress);
+            if (value < 0) value = 0;
+            if (value > 100) value = 100;
+            return value;
+        } catch (NumberFormatException e) {
+            TAB.getInstance().getMisconfigurationHelper().invalidNumberForBossBarProgress(
+                    name,
+                    progress,
+                    player.getProperty(propertyProgress).getCurrentRawValue(),
+                    player
+            );
+            return 100;
         }
     }
 
     @Override
-    public void setProgress(String progress) {
+    public void setTitle(@NonNull String title) {
+        if (this.title.equals(title)) return;
+        this.title = title;
+        for (TabPlayer p : players) {
+            p.setProperty(textRefresher, propertyTitle, title);
+            p.getBossBar().update(uniqueId, p.getProperty(propertyTitle).get());
+        }
+    }
+
+    @Override
+    public void setProgress(@NonNull String progress) {
         if (this.progress.equals(progress)) return;
         this.progress = progress;
         for (TabPlayer p : players) {
             p.setProperty(progressRefresher, propertyProgress, progress);
-            p.sendCustomPacket(new PacketPlayOutBoss(uuid, parseProgress(p.getProperty(propertyProgress).get())/100), manager);
+            p.getBossBar().update(uniqueId, parseProgress(p, p.getProperty(propertyProgress).get())/100);
         }
     }
 
@@ -209,98 +197,120 @@ public class BossBarLine implements BossBar {
     }
 
     @Override
-    public void setColor(String color) {
+    public void setColor(@NonNull String color) {
         if (this.color.equals(color)) return;
         this.color = color;
         for (TabPlayer p : players) {
-            p.setProperty(colorAndStyleRefresher, propertyColor, color);
-            p.sendCustomPacket(new PacketPlayOutBoss(uuid,
-                parseColor(p.getProperty(propertyColor).get()),
-                parseStyle(p.getProperty(propertyStyle).get())
-            ), manager);
+            p.setProperty(colorRefresher, propertyColor, color);
+            p.getBossBar().update(uniqueId, parseColor(p.getProperty(propertyColor).get()));
         }
     }
 
     @Override
-    public void setColor(BarColor color) {
+    public void setColor(@NonNull BarColor color) {
         setColor(color.toString());
     }
 
     @Override
-    public void setStyle(String style) {
+    public void setStyle(@NonNull String style) {
         if (this.style.equals(style)) return;
         this.style = style;
         for (TabPlayer p : players) {
-            p.setProperty(colorAndStyleRefresher, propertyStyle, style);
-            p.sendCustomPacket(new PacketPlayOutBoss(uuid,
-                parseColor(p.getProperty(propertyColor).get()),
-                parseStyle(p.getProperty(propertyStyle).get())
-            ), manager);
+            p.setProperty(styleRefresher, propertyColor, style);
+            p.getBossBar().update(uniqueId, parseStyle(p.getProperty(propertyStyle).get()));
         }
     }
 
     @Override
-    public void setStyle(BarStyle style) {
+    public void setStyle(@NonNull BarStyle style) {
         setStyle(style.toString());
     }
 
     @Override
-    public String getTitle() {
-        return title;
-    }
-
-    @Override
-    public String getProgress() {
-        return progress;
-    }
-
-    @Override
-    public String getColor() {
-        return color;
-    }
-
-    @Override
-    public String getStyle() {
-        return style;
-    }
-
-    @Override
-    public void addPlayer(TabPlayer player) {
+    public void addPlayer(me.neznamy.tab.api.@NonNull TabPlayer p) {
+        TabPlayer player = (TabPlayer) p;
         if (players.contains(player)) return;
         players.add(player);
         player.setProperty(textRefresher, propertyTitle, title);
         player.setProperty(progressRefresher, propertyProgress, progress);
-        player.setProperty(colorAndStyleRefresher, propertyColor, color);
-        player.setProperty(colorAndStyleRefresher, propertyStyle, style);
-        player.sendCustomPacket(new PacketPlayOutBoss(
-                uuid,
+        player.setProperty(colorRefresher, propertyColor, color);
+        player.setProperty(styleRefresher, propertyStyle, style);
+        sendToPlayerRaw(player);
+    }
+
+    public void sendToPlayerRaw(TabPlayer player) {
+        player.getBossBar().create(
+                uniqueId,
                 player.getProperty(propertyTitle).updateAndGet(),
-                parseProgress(player.getProperty(propertyProgress).updateAndGet())/100,
+                parseProgress(player, player.getProperty(propertyProgress).updateAndGet())/100,
                 parseColor(player.getProperty(propertyColor).updateAndGet()),
                 parseStyle(player.getProperty(propertyStyle).updateAndGet())
-            ), manager
         );
     }
 
     @Override
-    public void removePlayer(TabPlayer player) {
+    public void removePlayer(me.neznamy.tab.api.@NonNull TabPlayer p) {
+        TabPlayer player = (TabPlayer) p;
         if (!players.contains(player)) return;
         players.remove(player);
-        player.sendCustomPacket(new PacketPlayOutBoss(uuid), manager);
+        player.getBossBar().remove(uniqueId);
     }
 
     @Override
-    public List<TabPlayer> getPlayers() {
-        return new ArrayList<>(players);
+    public @NotNull List<me.neznamy.tab.api.TabPlayer> getPlayers() {
+        return players.stream().filter(TabPlayer::isOnline).collect(Collectors.toList());
     }
 
     @Override
-    public boolean containsPlayer(TabPlayer player) {
-        return players.contains(player);
+    public boolean containsPlayer(me.neznamy.tab.api.TabPlayer player) {
+        return players.contains((TabPlayer) player);
     }
 
-    @Override
-    public boolean isAnnouncementBar() {
-        return announcementOnly;
+    public class TextRefresher extends TabFeature implements Refreshable {
+
+        @Getter private final String featureName = "BossBar";
+        @Getter private final String refreshDisplayName = "Updating text";
+
+        @Override
+        public void refresh(@NotNull TabPlayer refreshed, boolean force) {
+            if (!players.contains(refreshed)) return;
+            refreshed.getBossBar().update(uniqueId, refreshed.getProperty(propertyTitle).updateAndGet());
+        }
+    }
+
+    public class ProgressRefresher extends TabFeature implements Refreshable {
+
+        @Getter private final String featureName = "BossBar";
+        @Getter private final String refreshDisplayName = "Updating progress";
+
+        @Override
+        public void refresh(@NotNull TabPlayer refreshed, boolean force) {
+            if (!players.contains(refreshed)) return;
+            refreshed.getBossBar().update(uniqueId, parseProgress(refreshed, refreshed.getProperty(propertyProgress).updateAndGet())/100);
+        }
+    }
+
+    public class ColorRefresher extends TabFeature implements Refreshable {
+
+        @Getter private final String featureName = "BossBar";
+        @Getter private final String refreshDisplayName = "Updating color";
+
+        @Override
+        public void refresh(@NotNull TabPlayer refreshed, boolean force) {
+            if (!players.contains(refreshed)) return;
+            refreshed.getBossBar().update(uniqueId, parseColor(refreshed.getProperty(propertyColor).updateAndGet()));
+        }
+    }
+
+    public class StyleRefresher extends TabFeature implements Refreshable {
+
+        @Getter private final String featureName = "BossBar";
+        @Getter private final String refreshDisplayName = "Updating style";
+
+        @Override
+        public void refresh(@NotNull TabPlayer refreshed, boolean force) {
+            if (!players.contains(refreshed)) return;
+            refreshed.getBossBar().update(uniqueId, parseStyle(refreshed.getProperty(propertyStyle).updateAndGet()));
+        }
     }
 }

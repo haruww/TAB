@@ -1,37 +1,42 @@
 package me.neznamy.tab.shared.features.scoreboard.lines;
 
-import java.util.Collections;
-
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.chat.EnumChatFormat;
-import me.neznamy.tab.api.protocol.PacketPlayOutScoreboardScore;
-import me.neznamy.tab.api.protocol.PacketPlayOutScoreboardTeam;
+import lombok.Getter;
+import lombok.NonNull;
+import me.neznamy.tab.shared.chat.EnumChatFormat;
 import me.neznamy.tab.api.scoreboard.Line;
-import me.neznamy.tab.api.protocol.PacketPlayOutScoreboardScore.Action;
-import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.shared.features.types.TabFeature;
+import me.neznamy.tab.shared.platform.Scoreboard;
+import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.features.scoreboard.ScoreboardImpl;
 import me.neznamy.tab.shared.features.scoreboard.ScoreboardManagerImpl;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Abstract class representing a line of scoreboard
  */
 public abstract class ScoreboardLine extends TabFeature implements Line {
 
+    @Getter private final String featureName = "Scoreboard";
+
     //ID of this line
     protected final int lineNumber;
     
     //text to display
-    protected String text;
+    @Getter protected String text;
     
     //scoreboard this line belongs to
     protected final ScoreboardImpl parent;
     
     //scoreboard team name of player in this line
-    protected final String teamName;
+    @Getter protected final String teamName;
     
     //forced player name start to make lines unique & sort them by names
-    protected final String playerName;
+    @Getter protected final String playerName;
+
+    private final Set<TabPlayer> shownPlayers = Collections.newSetFromMap(new WeakHashMap<>());
     
     /**
      * Constructs new instance with given parameters
@@ -41,8 +46,7 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      * @param   lineNumber
      *          ID of this line
      */
-    protected ScoreboardLine(ScoreboardImpl parent, int lineNumber) {
-        super(parent.getFeatureName(), "Updating scoreboard lines");
+    protected ScoreboardLine(@NonNull ScoreboardImpl parent, int lineNumber) {
         this.parent = parent;
         this.lineNumber = lineNumber;
         teamName = "TAB-SB-TM-" + lineNumber;
@@ -55,7 +59,7 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      * @param   p
      *          player to register line to
      */
-    public abstract void register(TabPlayer p);
+    public abstract void register(@NonNull TabPlayer p);
     
     /**
      * Unregisters this line to the player
@@ -63,23 +67,14 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      * @param   p
      *          player to unregister line to
      */
-    public abstract void unregister(TabPlayer p);
+    public abstract void unregister(@NonNull TabPlayer p);
 
     /**
      * Returns forced name start of this line to specified viewer
      *
      * @return  forced name start of this line to specified viewer
      */
-    public String getPlayerName(TabPlayer viewer) {
-        return playerName;
-    }
-
-    /**
-     * Returns forced name start of this line
-     *
-     * @return  forced name start of this line
-     */
-    public String getPlayerName() {
+    public String getPlayerName(@NonNull TabPlayer viewer) {
         return playerName;
     }
 
@@ -92,7 +87,7 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      *          max length of first string
      * @return  array of 2 strings where second one might be empty
      */
-    protected String[] split(String string, int firstElementMaxLength) {
+    protected String[] split(@NonNull String string, int firstElementMaxLength) {
         if (string.length() <= firstElementMaxLength) return new String[] {string, ""};
         int splitIndex = firstElementMaxLength;
         if (string.charAt(splitIndex-1) == EnumChatFormat.COLOR_CHAR) splitIndex--;
@@ -124,9 +119,11 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      * @param   suffix
      *          suffix
      */
-    protected void addLine(TabPlayer p, String fakePlayer, String prefix, String suffix) {
-        p.sendCustomPacket(new PacketPlayOutScoreboardScore(Action.CHANGE, ScoreboardManagerImpl.OBJECTIVE_NAME, fakePlayer, getNumber(p)), TabConstants.PacketCategory.SCOREBOARD_LINES);
-        p.sendCustomPacket(new PacketPlayOutScoreboardTeam(teamName, prefix, suffix, "never", "never", Collections.singletonList(fakePlayer), 0), TabConstants.PacketCategory.SCOREBOARD_LINES);
+    protected void addLine(@NonNull TabPlayer p, @NonNull String fakePlayer, @NonNull String prefix, @NonNull String suffix) {
+        p.getScoreboard().setScore(ScoreboardManagerImpl.OBJECTIVE_NAME, fakePlayer, getNumber(p));
+        p.getScoreboard().registerTeam(teamName, prefix, suffix, Scoreboard.NameVisibility.NEVER,
+                Scoreboard.CollisionRule.NEVER, Collections.singletonList(fakePlayer), 0);
+        shownPlayers.add(p);
     }
     
     /**
@@ -137,16 +134,12 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      * @param   fakePlayer
      *          player name
      */
-    protected void removeLine(TabPlayer p, String fakePlayer) {
-        p.sendCustomPacket(new PacketPlayOutScoreboardScore(Action.REMOVE, ScoreboardManagerImpl.OBJECTIVE_NAME, fakePlayer, 0), TabConstants.PacketCategory.SCOREBOARD_LINES);
-        p.sendCustomPacket(new PacketPlayOutScoreboardTeam(teamName), TabConstants.PacketCategory.SCOREBOARD_LINES);
+    protected void removeLine(@NonNull TabPlayer p, @NonNull String fakePlayer) {
+        p.getScoreboard().removeScore(ScoreboardManagerImpl.OBJECTIVE_NAME, fakePlayer);
+        p.getScoreboard().unregisterTeam(teamName);
+        shownPlayers.remove(p);
     }
-    
-    @Override
-    public String getText() {
-        return text;
-    }
-    
+
     /**
      * Returns number that should be displayed as score for specified player
      *
@@ -154,16 +147,12 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      *          player to get number for
      * @return  number displayed
      */
-    public int getNumber(TabPlayer p) {
+    public int getNumber(@NonNull TabPlayer p) {
         if (parent.getManager().isUsingNumbers() || p.getVersion().getMinorVersion() < 8 || p.isBedrockPlayer()) {
             return parent.getLines().size() + 1 - lineNumber;
         } else {
             return parent.getManager().getStaticNumber();
         }
-    }
-
-    public String getTeamName() {
-        return teamName;
     }
 
     /**
@@ -178,7 +167,7 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
      *          maximum length of name field, used values are 16 characters for &lt;1.8 and 40 for 1.8+
      * @return  Split text as an array of 3 elements
      */
-    protected String[] splitText(String playerNameStart, String text, int maxNameLength) {
+    protected String[] splitText(@NonNull String playerNameStart, @NonNull String text, int maxNameLength) {
         String prefixValue;
         String nameValue;
         String suffixValue;
@@ -198,5 +187,9 @@ public abstract class ScoreboardLine extends TabFeature implements Line {
             suffixValue = nameSuffix[1];
         }
         return new String[]{prefixValue, nameValue, suffixValue};
+    }
+
+    public boolean isShownTo(@NonNull TabPlayer player) {
+        return shownPlayers.contains(player);
     }
 }

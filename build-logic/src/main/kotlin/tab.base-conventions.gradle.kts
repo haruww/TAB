@@ -1,24 +1,19 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
-    id("net.kyori.indra")
-}
-
-indra {
-    javaVersions {
-        target(8)
-    }
-    github("NEZNAMY", "TAB") {
-        ci(true)
-    }
+    `java-library`
+    id("io.freefair.lombok")
 }
 
 tasks {
     processResources {
         filter<ReplaceTokens>("tokens" to mapOf(
+            "id" to rootProject.ext.get("id")!!.toString(),
             "name" to rootProject.name,
             "version" to project.version,
-            "description" to project.description
+            "description" to project.description,
+            "website" to rootProject.ext.get("website")!!.toString(),
+            "author" to rootProject.ext.get("author")!!.toString()
         ))
     }
     javadoc {
@@ -26,5 +21,16 @@ tasks {
         enabled = false
         options.encoding = Charsets.UTF_8.name()
         (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+    }
+    compileJava {
+        options.encoding = Charsets.UTF_8.name()
+        options.release.set(8)
+        options.compilerArgs.addAll(listOf("-nowarn", "-Xlint:-unchecked", "-Xlint:-deprecation"))
+    }
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }

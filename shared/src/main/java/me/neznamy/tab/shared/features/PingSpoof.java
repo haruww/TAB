@@ -1,62 +1,50 @@
 package me.neznamy.tab.shared.features;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import me.neznamy.tab.api.TabConstants;
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.EnumPlayerInfoAction;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.PlayerInfoData;
+import lombok.Getter;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.shared.features.layout.Layout;
-import me.neznamy.tab.shared.features.layout.LayoutManager;
+import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.features.layout.LayoutManagerImpl;
+import me.neznamy.tab.shared.features.layout.LayoutView;
 import me.neznamy.tab.shared.features.layout.ParentGroup;
 import me.neznamy.tab.shared.features.layout.PlayerSlot;
+import me.neznamy.tab.shared.features.types.*;
+import me.neznamy.tab.shared.platform.TabPlayer;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 /**
- * Sets ping of all players in the packet to configured value to prevent hacked clients from seeing exact ping value of each player
+ * This feature hides real ping of players in connection bar and
+ * replaces it with a custom fake value.
  */
-public class PingSpoof extends TabFeature {
+public class PingSpoof extends TabFeature implements JoinListener, LatencyListener, Loadable, UnLoadable {
 
-    //fake ping value
-    private final int value = TAB.getInstance().getConfiguration().getConfig().getInt("ping-spoof.value", 0);
+    /** Feature name in CPU report */
+    @Getter private final String featureName = "Ping spoof";
 
-    private LayoutManager layoutManager;
+    /** Value to display as ping instead of real ping */
+    private final int value = TAB.getInstance().getConfig().getInt("ping-spoof.value", 0);
 
-    /**
-     * Constructs new instance and loads config options
-     */
-    public PingSpoof() {
-        super("Ping spoof", null);
-        TAB.getInstance().debug(String.format("Loaded PingSpoof feature with parameters value=%s", value));
-    }
+    private LayoutManagerImpl layoutManager;
 
     @Override
-    public void onPlayerInfo(TabPlayer receiver, PacketPlayOutPlayerInfo info) {
-        if (info.getAction() != EnumPlayerInfoAction.UPDATE_LATENCY && info.getAction() != EnumPlayerInfoAction.ADD_PLAYER) return;
-        for (PlayerInfoData playerInfoData : info.getEntries()) {
-            if (TAB.getInstance().getPlayerByTabListUUID(playerInfoData.getUniqueId()) != null) playerInfoData.setLatency(value);
-            if (layoutManager != null) {
-                Layout layout = layoutManager.getPlayerViews().get(receiver);
-                if (layout != null) {
-                    for (ParentGroup group : layout.getGroups()) {
-                        for (Map.Entry<Integer, PlayerSlot> entry : group.getPlayerSlots().entrySet()) {
-                            if (layoutManager.getUUID(entry.getKey()) == playerInfoData.getUniqueId() && entry.getValue().getPlayer() != null) {
-                                playerInfoData.setLatency(value);
-                            }
-                        }
-                    }
+    public int onLatencyChange(@NotNull TabPlayer packetReceiver, @NotNull UUID id, int latency) {
+        if (layoutManager != null) {
+            LayoutView layout = layoutManager.getViews().get(packetReceiver);
+            if (layout != null) {
+                for (ParentGroup group : layout.getGroups()) {
+                    PlayerSlot slot = group.getPlayerSlots().get((int) id.getLeastSignificantBits());
+                    if (slot != null && slot.getPlayer() != null) return value;
                 }
             }
         }
+        if (TAB.getInstance().getPlayer(id) != null) return value;
+        return latency;
     }
 
     @Override
     public void load() {
-        layoutManager = (LayoutManager) TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.LAYOUT);
+        layoutManager = TAB.getInstance().getFeatureManager().getFeature(TabConstants.Feature.LAYOUT);
         updateAll(false);
     }
 
@@ -65,13 +53,19 @@ public class PingSpoof extends TabFeature {
         updateAll(true);
     }
 
-    private void updateAll(boolean realPing) {
-        List<PlayerInfoData> list = new ArrayList<>();
-        for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
-            list.add(new PlayerInfoData(p.getUniqueId(), realPing ? p.getPing() : value));
+    @Override
+    public void onJoin(@NotNull TabPlayer connectedPlayer) {
+        for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+            connectedPlayer.getTabList().updateLatency(all.getTablistId(), value);
+            all.getTabList().updateLatency(connectedPlayer.getTablistId(), value);
         }
-        for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
-            p.sendCustomPacket(new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.UPDATE_LATENCY, list), this);
+    }
+
+    private void updateAll(boolean realPing) {
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
+                viewer.getTabList().updateLatency(target.getTablistId(), realPing ? target.getPing() : value);
+            }
         }
     }
 }

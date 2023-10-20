@@ -1,80 +1,92 @@
 package me.neznamy.tab.shared.features;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.EnumGamemode;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.EnumPlayerInfoAction;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo.PlayerInfoData;
+import lombok.Getter;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.shared.platform.TabPlayer;
+import me.neznamy.tab.shared.features.types.*;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Cancelling GameMode change packet to spectator GameMode to avoid players being moved on
  * the bottom of TabList with transparent name. Does not work on self as that would result
  * in players not being able to clip through walls.
  */
-public class SpectatorFix extends TabFeature {
+public class SpectatorFix extends TabFeature implements JoinListener, GameModeListener, Loadable, UnLoadable,
+        ServerSwitchListener, WorldSwitchListener {
 
-    /**
-     * Constructs new instance and sends debug message that feature loaded.
-     */
-    public SpectatorFix() {
-        super("Spectator fix", null);
-        TAB.getInstance().debug("Loaded SpectatorFix feature");
-    }
+    @Getter private final String featureName = "Spectator fix";
 
     /**
      * Sends GameMode update of all players to either their real GameMode if
      * {@code realGameMode} is {@code true} or fake value if it's {@code false}.
      *
+     * @param   viewer
+     *          Player to send gamemode updates to
      * @param   realGameMode
      *          Whether real GameMode should be shown or fake one
+     * @param   mutually
+     *          If target's view should be updated as well
      */
-    private void updateAll(boolean realGameMode) {
-        for (TabPlayer p : TAB.getInstance().getOnlinePlayers()) {
-            if (p.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
-            List<PlayerInfoData> list = new ArrayList<>();
-            for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
-                if (p == target) continue;
-                list.add(new PlayerInfoData(target.getUniqueId(), realGameMode ? EnumGamemode.VALUES[target.getGamemode()+1] : EnumGamemode.CREATIVE));
-            }
-            p.sendCustomPacket(new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.UPDATE_GAME_MODE, list), this);
-        }
-    }
-
-    @Override
-    public void onPlayerInfo(TabPlayer receiver, PacketPlayOutPlayerInfo info) {
-        if (info.getAction() != EnumPlayerInfoAction.UPDATE_GAME_MODE && info.getAction() != EnumPlayerInfoAction.ADD_PLAYER) return;
-        for (PlayerInfoData playerInfoData : info.getEntries()) {
-            if (playerInfoData.getGameMode() != EnumGamemode.SPECTATOR) continue;
-            if (receiver.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
-            TabPlayer changed = TAB.getInstance().getPlayerByTabListUUID(playerInfoData.getUniqueId());
-            if (changed != receiver) playerInfoData.setGameMode(EnumGamemode.CREATIVE);
-        }
-    }
-
-    @Override
-    public void onJoin(TabPlayer p) {
-        List<PlayerInfoData> list = new ArrayList<>();
+    private void updatePlayer(@NotNull TabPlayer viewer, boolean realGameMode, boolean mutually) {
         for (TabPlayer target : TAB.getInstance().getOnlinePlayers()) {
-            if (p == target || target.getGamemode() != 3) continue;
-            list.add(new PlayerInfoData(target.getUniqueId(), EnumGamemode.CREATIVE));
+            if (viewer == target) continue;
+            if (target.getGamemode() == 3 && !viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) {
+                viewer.getTabList().updateGameMode(target.getTablistId(), realGameMode ? target.getGamemode() : 0);
+            }
+            if (mutually && viewer.getGamemode() == 3 && !target.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) {
+                target.getTabList().updateGameMode(viewer.getTablistId(), realGameMode ? viewer.getGamemode() : 0);
+            }
         }
-        if (list.isEmpty() || p.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) return;
-        p.sendCustomPacket(new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.UPDATE_GAME_MODE, list), this);
+    }
+
+    @Override
+    public void onGameModeChange(@NotNull TabPlayer player) {
+        if (player.getGamemode() != 3) return;
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            if (viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
+            if (player != viewer && player.getServer().equals(viewer.getServer())) {
+                viewer.getTabList().updateGameMode(player.getTablistId(), 0);
+            }
+        }
+    }
+
+    @Override
+    public void onJoin(@NotNull TabPlayer p) {
+        TAB.getInstance().getCPUManager().runTaskLater(100, featureName, TabConstants.CpuUsageCategory.PLAYER_JOIN,
+                () -> updatePlayer(p, false, true));
     }
 
     @Override
     public void load() {
-        updateAll(false);
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            updatePlayer(viewer, false, false);
+        }
     }
 
     @Override
     public void unload() {
-        updateAll(true);
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            updatePlayer(viewer, true, false);
+        }
+    }
+
+    @Override
+    public void onServerChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+        // 200ms delay for global playerlist, taking extra time
+        TAB.getInstance().getCPUManager().runTaskLater(300, featureName, TabConstants.CpuUsageCategory.SERVER_SWITCH, () -> {
+            for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
+                updatePlayer(all, false, true);
+            }
+        });
+    }
+
+    @Override
+    public void onWorldChange(@NotNull TabPlayer changed, @NotNull String from, @NotNull String to) {
+        // Some server versions may resend gamemode on world switch, resend false value again
+        for (TabPlayer viewer : TAB.getInstance().getOnlinePlayers()) {
+            if (viewer == changed || changed.getGamemode() != 3 || viewer.hasPermission(TabConstants.Permission.SPECTATOR_BYPASS)) continue;
+            viewer.getTabList().updateGameMode(changed.getTablistId(), 0);
+        }
     }
 }

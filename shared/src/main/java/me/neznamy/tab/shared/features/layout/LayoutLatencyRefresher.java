@@ -1,31 +1,33 @@
 package me.neznamy.tab.shared.features.layout;
 
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
-import me.neznamy.tab.api.protocol.PacketPlayOutPlayerInfo;
+import lombok.Getter;
+import me.neznamy.tab.shared.TabConstants;
+import me.neznamy.tab.shared.platform.TabPlayer;
+import me.neznamy.tab.shared.features.types.Refreshable;
+import me.neznamy.tab.shared.features.types.TabFeature;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.api.TabConstants;
+import org.jetbrains.annotations.NotNull;
 
-public class LayoutLatencyRefresher extends TabFeature {
+public class LayoutLatencyRefresher extends TabFeature implements Refreshable {
 
-    private final LayoutManager manager;
+    @Getter private final String featureName = "Layout";
+    @Getter private final String refreshDisplayName = "Updating latency";
+    @NotNull private final LayoutManagerImpl manager;
 
-    public LayoutLatencyRefresher(LayoutManager manager) {
-        super(manager.getFeatureName(), "Updating latency");
+    public LayoutLatencyRefresher(@NotNull LayoutManagerImpl manager) {
         this.manager = manager;
         TAB.getInstance().getPlaceholderManager().addUsedPlaceholder(TabConstants.Placeholder.PING, this);
     }
 
     @Override
-    public void refresh(TabPlayer p, boolean force) {
+    public void refresh(@NotNull TabPlayer p, boolean force) {
         for (TabPlayer all : TAB.getInstance().getOnlinePlayers()) {
             if (all.getVersion().getMinorVersion() < 8) continue;
-            Layout layout = manager.getPlayerViews().get(all);
+            LayoutView layout = manager.getViews().get(all);
             if (layout == null) continue;
             PlayerSlot slot = layout.getSlot(p);
             if (slot == null) continue;
-            all.sendCustomPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.UPDATE_LATENCY,
-                    new PacketPlayOutPlayerInfo.PlayerInfoData(slot.getUUID(), p.getPing())), TabConstants.PacketCategory.LAYOUT_LATENCY);
+            all.getTabList().updateLatency(slot.getUniqueId(), p.getPing());
         }
     }
 }

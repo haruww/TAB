@@ -2,24 +2,30 @@ package me.neznamy.tab.shared.features.nametags;
 
 import java.util.Collections;
 
-import me.neznamy.tab.api.TabFeature;
-import me.neznamy.tab.api.TabPlayer;
+import lombok.Getter;
+import me.neznamy.tab.shared.platform.TabPlayer;
+import me.neznamy.tab.shared.features.types.Refreshable;
+import me.neznamy.tab.shared.features.types.TabFeature;
 import me.neznamy.tab.shared.TAB;
-import me.neznamy.tab.api.TabConstants;
+import me.neznamy.tab.shared.TabConstants;
+import org.jetbrains.annotations.NotNull;
 
-public class VisibilityRefresher extends TabFeature {
+public class VisibilityRefresher extends TabFeature implements Refreshable {
 
-    private final NameTag nameTags;
+    @Getter private final String featureName = "NameTags";
+    @Getter private final String refreshDisplayName = "Updating NameTag visibility";
+    @NotNull private final NameTag nameTags;
 
-    public VisibilityRefresher(NameTag nameTags) {
-        super(nameTags.getFeatureName(), "Updating NameTag visibility");
+    public VisibilityRefresher(@NotNull NameTag nameTags) {
         this.nameTags = nameTags;
-        TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(TabConstants.Placeholder.INVISIBLE, 500, TabPlayer::hasInvisibilityPotion);
+        TAB.getInstance().getPlaceholderManager().registerPlayerPlaceholder(TabConstants.Placeholder.INVISIBLE, 500,
+                p -> ((TabPlayer)p).hasInvisibilityPotion());
         addUsedPlaceholders(Collections.singletonList(TabConstants.Placeholder.INVISIBLE));
     }
 
     @Override
-    public void refresh(TabPlayer p, boolean force) {
+    public void refresh(@NotNull TabPlayer p, boolean force) {
+        if (nameTags.getDisableChecker().isDisabledPlayer(p)) return;
         nameTags.updateTeamData(p);
     }
 }

@@ -6,8 +6,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import me.neznamy.tab.api.chat.EnumChatFormat;
+import lombok.Getter;
+import lombok.NonNull;
+import me.neznamy.tab.shared.chat.EnumChatFormat;
 import me.neznamy.tab.shared.TAB;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Placeholder replacement pattern class for placeholder output replacements
@@ -29,7 +32,7 @@ public class PlaceholderReplacementPattern {
     private final Map<float[], String> numberIntervals = new HashMap<>();
 
     /** Set of all used placeholders in replacement values */
-    private final Set<String> nestedPlaceholders = new HashSet<>();
+    @Getter private final Set<String> nestedPlaceholders = new HashSet<>();
 
     /**
      * Constructs new instance from given replacement map from config
@@ -39,7 +42,7 @@ public class PlaceholderReplacementPattern {
      * @param   map
      *          replacement map from config
      */
-    public PlaceholderReplacementPattern(String identifier, Map<Object, Object> map) {
+    public PlaceholderReplacementPattern(@NonNull String identifier, @NonNull Map<Object, Object> map) {
         for (Entry<Object, Object> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
             String value = String.valueOf(entry.getValue()).replace(identifier, "%value%");
@@ -50,8 +53,10 @@ public class PlaceholderReplacementPattern {
             //snakeyaml converts yes & no to booleans, making them not work when used without "
             if ("true".equals(key)) {
                 replacements.put("yes", value);
+                replacements.put("Yes", value);
             } else if ("false".equals(key)) {
                 replacements.put("no", value);
+                replacements.put("No", value);
             } else if (key.contains("-")) {
                 try {
                     numberIntervals.put(new float[]{Float.parseFloat(key.split("-")[0]), Float.parseFloat(key.split("-")[1])}, value);
@@ -64,16 +69,6 @@ public class PlaceholderReplacementPattern {
     }
 
     /**
-     * Returns set of all nested placeholders used inside placeholder output
-     * replacement values in all lines.
-     *
-     * @return  All used nested placeholders in values.
-     */
-    public Set<String> getNestedPlaceholders() {
-        return nestedPlaceholders;
-    }
-
-    /**
      * Finds replacement using provided output as well as applying
      * %value% placeholder for original output inside replacements.
      *
@@ -81,9 +76,8 @@ public class PlaceholderReplacementPattern {
      *          placeholder's output
      * @return  replacement or {@code output} if no pattern is matching
      */
-    public String findReplacement(String output) {
+    public @NotNull String findReplacement(@NonNull String output) {
         String replacement = findReplacement0(output);
-        if (replacement == null) return "";
         if (replacement.contains("%value%")) {
             replacement = replacement.replace("%value%", output);
         }
@@ -98,7 +92,7 @@ public class PlaceholderReplacementPattern {
      *          placeholder's output
      * @return  replacement or {@code output} if no pattern is matching
      */
-    private String findReplacement0(String output) {
+    private @NotNull String findReplacement0(@NonNull String output) {
         //skipping check if no replacements are defined
         if (replacements.isEmpty()) return output;
         

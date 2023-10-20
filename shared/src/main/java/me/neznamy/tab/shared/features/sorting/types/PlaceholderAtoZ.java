@@ -1,6 +1,6 @@
 package me.neznamy.tab.shared.features.sorting.types;
 
-import me.neznamy.tab.shared.ITabPlayer;
+import me.neznamy.tab.shared.platform.TabPlayer;
 import me.neznamy.tab.shared.features.sorting.Sorting;
 
 /**
@@ -15,18 +15,13 @@ public class PlaceholderAtoZ extends SortingType {
      *          placeholder to sort by
      */
     public PlaceholderAtoZ(Sorting sorting, String sortingPlaceholder) {
-        super(sorting, sortingPlaceholder);
+        super(sorting, "PLACEHOLDER_A_TO_Z", sortingPlaceholder);
     }
 
     @Override
-    public String getChars(ITabPlayer p) {
+    public String getChars(TabPlayer p) {
         String output = setPlaceholders(p);
-        p.setTeamNameNote(p.getTeamNameNote() + sortingPlaceholder + " returned \"" + output + "\". &r");
-        return output;
-    }
-
-    @Override
-    public String toString() {
-        return "PLACEHOLDER_A_TO_Z";
+        sorting.setTeamNameNote(p, sorting.getTeamNameNote(p) + "\n-> " + sortingPlaceholder + " returned \"&e" + output + "&r\". &r");
+        return sorting.isCaseSensitiveSorting() ? output : output.toLowerCase();
     }
 }

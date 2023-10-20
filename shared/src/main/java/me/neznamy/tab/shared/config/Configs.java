@@ -1,13 +1,16 @@
 package me.neznamy.tab.shared.config;
 
-import me.neznamy.tab.api.PropertyConfiguration;
-import me.neznamy.tab.api.ProtocolVersion;
-import me.neznamy.tab.api.config.ConfigurationFile;
-import me.neznamy.tab.api.config.YamlConfigurationFile;
+import lombok.Getter;
+import me.neznamy.tab.shared.ProtocolVersion;
 import me.neznamy.tab.shared.TAB;
+import me.neznamy.tab.shared.config.file.ConfigurationFile;
+import me.neznamy.tab.shared.config.file.YamlConfigurationFile;
 import me.neznamy.tab.shared.config.file.YamlPropertyConfigurationFile;
+import me.neznamy.tab.shared.config.mysql.MySQL;
 import me.neznamy.tab.shared.config.mysql.MySQLGroupConfiguration;
 import me.neznamy.tab.shared.config.mysql.MySQLUserConfiguration;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.File;
@@ -21,32 +24,30 @@ import java.util.List;
 public class Configs {
 
     //config.yml file
-    private final ConfigurationFile config = new YamlConfigurationFile(getClass().getClassLoader().getResourceAsStream(TAB.getInstance().getPlatform().getConfigName()),
+    @Getter private final ConfigurationFile config = new YamlConfigurationFile(getClass().getClassLoader().getResourceAsStream("config.yml"),
             new File(TAB.getInstance().getDataFolder(), "config.yml"));
 
-    private final boolean bukkitPermissions = TAB.getInstance().getServerVersion() == ProtocolVersion.PROXY && config.getBoolean("use-bukkit-permissions-manager", false);
-    private final boolean debugMode = config.getBoolean("debug", false);
-    private final boolean removeGhostPlayers = getSecretOption("remove-ghost-players", false);
-    private final boolean pipelineInjection = getSecretOption("pipeline-injection", true) && TAB.getInstance().getServerVersion().getMinorVersion() >= 8;
+    @Getter private final boolean bukkitPermissions = TAB.getInstance().getServerVersion() == ProtocolVersion.PROXY && config.getBoolean("use-bukkit-permissions-manager", false);
+    @Getter private final boolean debugMode = config.getBoolean("debug", false);
+    @Getter private final boolean onlineUuidInTabList = config.getBoolean("use-online-uuid-in-tablist", true);
+    @Getter private final boolean pipelineInjection = getSecretOption("pipeline-injection", true);
+    @Getter private final String serverName = getSecretOption("server-name", "N/A");
 
     //animations.yml file
-    private final ConfigurationFile animation = new YamlConfigurationFile(getClass().getClassLoader().getResourceAsStream("animations.yml"),
+    @Getter private final ConfigurationFile animationFile = new YamlConfigurationFile(getClass().getClassLoader().getResourceAsStream("animations.yml"),
             new File(TAB.getInstance().getDataFolder(), "animations.yml"));
 
     //messages.yml file
-    private final MessageFile messages = new MessageFile();
+    @Getter private final MessageFile messages = new MessageFile();
 
     //playerdata.yml, used for bossbar & scoreboard toggle saving
     private ConfigurationFile playerdata;
 
-    private final ConfigurationFile layout = new YamlConfigurationFile(getClass().getClassLoader().getResourceAsStream("layout.yml"),
-            new File(TAB.getInstance().getDataFolder(), "layout.yml"));
+    @Getter private PropertyConfiguration groups;
 
-    private PropertyConfiguration groupFile;
+    @Getter private PropertyConfiguration users;
 
-    private PropertyConfiguration userFile;
-
-    private MySQL mysql;
+    @Getter private MySQL mysql;
 
     /**
      * Constructs new instance and loads configuration files.
@@ -59,22 +60,32 @@ public class Configs {
      */
     public Configs() throws YAMLException, IOException {
         Converter converter = new Converter();
-        converter.convertToV3(config);
-        converter.removeOldOptions(config);
-        converter.convertAnimationFile(animation);
+        converter.convert2810to290(animationFile);
+        converter.convert292to300(config);
+        converter.convert301to302(config);
+        converter.convert331to332(config);
+        converter.convert332to400(config);
+        converter.convert403to404(config);
         if (config.getBoolean("mysql.enabled", false)) {
             try {
+                // Initialization to try to avoid java.sql.SQLException: No suitable driver found
+                try {
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                } catch (ClassNotFoundException e) {
+                    Class.forName("com.mysql.jdbc.Driver");
+                }
                 mysql = new MySQL(config.getString("mysql.host", "127.0.0.1"), config.getInt("mysql.port", 3306),
                         config.getString("mysql.database", "tab"), config.getString("mysql.username", "user"), config.getString("mysql.password", "password"));
-                groupFile = new MySQLGroupConfiguration(mysql);
-                userFile = new MySQLUserConfiguration(mysql);
+                mysql.openConnection();
+                groups = new MySQLGroupConfiguration(mysql);
+                users = new MySQLUserConfiguration(mysql);
                 return;
-            } catch (SQLException e) {
+            } catch (SQLException | ClassNotFoundException e) {
                 TAB.getInstance().getErrorManager().criticalError("Failed to connect to MySQL", e);
             }
         }
-        groupFile = new YamlPropertyConfigurationFile(getClass().getClassLoader().getResourceAsStream("groups.yml"), new File(TAB.getInstance().getDataFolder(), "groups.yml"));
-        userFile = new YamlPropertyConfigurationFile(getClass().getClassLoader().getResourceAsStream("users.yml"), new File(TAB.getInstance().getDataFolder(), "users.yml"));
+        groups = new YamlPropertyConfigurationFile(getClass().getClassLoader().getResourceAsStream("groups.yml"), new File(TAB.getInstance().getDataFolder(), "groups.yml"));
+        users = new YamlPropertyConfigurationFile(getClass().getClassLoader().getResourceAsStream("users.yml"), new File(TAB.getInstance().getDataFolder(), "users.yml"));
     }
 
     /**
@@ -87,37 +98,9 @@ public class Configs {
      * @return  value with specified path or default value if not present
      */
     @SuppressWarnings("unchecked")
-    public <T> T getSecretOption(String path, T defaultValue) {
+    public @NotNull <T> T getSecretOption(@NotNull String path, @NotNull T defaultValue) {
         Object value = config.getObject(path);
         return value == null ? defaultValue : (T) value;
-    }
-
-    public MessageFile getMessages() {
-        return messages;
-    }
-
-    public ConfigurationFile getConfig() {
-        return config;
-    }
-
-    public boolean isRemoveGhostPlayers() {
-        return removeGhostPlayers;
-    }
-
-    public ConfigurationFile getLayout() {
-        return layout;
-    }
-
-    public ConfigurationFile getAnimationFile() {
-        return animation;
-    }
-
-    public boolean isBukkitPermissions() {
-        return bukkitPermissions;
-    }
-
-    public boolean isPipelineInjection() {
-        return pipelineInjection;
     }
 
     public ConfigurationFile getPlayerDataFile() {
@@ -134,33 +117,19 @@ public class Configs {
         return playerdata;
     }
 
-    public PropertyConfiguration getGroups() {
-        return groupFile;
-    }
-
-    public PropertyConfiguration getUsers() {
-        return userFile;
-    }
-
-    public MySQL getMysql() {
-        return mysql;
-    }
-
-    public String getGroup(List<Object> serverGroups, String element) {
+    public String getGroup(@NotNull List<Object> serverGroups, @Nullable String element) {
         if (serverGroups.isEmpty() || element == null) return element;
         for (Object worldGroup : serverGroups) {
             for (String definedWorld : worldGroup.toString().split(";")) {
                 if (definedWorld.endsWith("*")) {
                     if (element.toLowerCase().startsWith(definedWorld.substring(0, definedWorld.length()-1).toLowerCase())) return worldGroup.toString();
-                } else {
+                } else if (definedWorld.startsWith("*")) {
+                    if (element.toLowerCase().endsWith(definedWorld.substring(1).toLowerCase())) return worldGroup.toString();
+                }  else {
                     if (element.equalsIgnoreCase(definedWorld)) return worldGroup.toString();
                 }
             }
         }
         return element;
-    }
-
-    public boolean isDebugMode() {
-        return debugMode;
     }
 }
