@@ -32,11 +32,13 @@ import net.milkbowl.vault.permission.Permission;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.Scoreboard;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -252,6 +254,38 @@ public class BukkitPlatform implements BackendPlatform {
         return Bukkit.getWorlds().stream().map(world -> world.getPlayers().size()).reduce(0, Integer::sum);
     }
     // MultiPaper end
+
+    // RandomTeamFight start
+    @Override
+    public int getRedTeamPlayerCount() {
+        int count = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Player p : world.getPlayers()) {
+                Scoreboard scoreboard = p.getScoreboard();
+                String playerName = p.getName();
+                if (scoreboard.getEntryTeam(playerName) != null && scoreboard.getEntryTeam(playerName).getName().equalsIgnoreCase("red")) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public int getBlueTeamPlayerCount() {
+        int count = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Player p : world.getPlayers()) {
+                Scoreboard scoreboard = p.getScoreboard();
+                String playerName = p.getName();
+                if (scoreboard.getEntryTeam(playerName) != null && scoreboard.getEntryTeam(playerName).getName().equalsIgnoreCase("blue")) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+    // RandomTeamFight end
 
     @Override
     @NotNull

@@ -133,6 +133,10 @@ public interface Platform {
 
     default int getOnlinePlayerCount() { return -1; }; // MultiPaper
 
+    default int getRedTeamPlayerCount() { return -1; } // RandomTeamFight
+
+    default int getBlueTeamPlayerCount() { return -1; } // RandomTeamFight
+
     /**
      * Returns server's version
      *

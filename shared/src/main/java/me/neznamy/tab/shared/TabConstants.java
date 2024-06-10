@@ -267,6 +267,10 @@ public class TabConstants {
         public static final String ONLINE = "%online%";
         public static final String STAFF_ONLINE = "%staffonline%";
         public static final String NON_STAFF_ONLINE = "%nonstaffonline%";
+        // RandomTeamFights start
+        public static final String RED_TEAM_ONLINE = "%redteamonline%";
+        public static final String BLUE_TEAM_ONLINE = "%blueteamonline%";
+        // RandomTeamFights end
         public static final String LUCKPERMS_PREFIX = "%luckperms-prefix%";
         public static final String LUCKPERMS_SUFFIX = "%luckperms-suffix%";
         public static final String COUNTDOWN = "%countdown%";
