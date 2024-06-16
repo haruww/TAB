@@ -112,6 +112,11 @@ public class BungeeTabPlayer extends ProxyTabPlayer {
     }
 
     @Override
+    public int getKillCount() {
+        return 0;
+    }
+
+    @Override
     public void sendPluginMessage(byte[] message) {
         try {
             getPlayer().getServer().sendData(TabConstants.PLUGIN_MESSAGE_CHANNEL_NAME, message);

@@ -62,8 +62,15 @@ public class UniversalPlaceholderRegistry implements PlaceholderRegistry {
         });
         // MultiPaper end
         // RandomTeamFights start
-        manager.registerServerPlaceholder(TabConstants.Placeholder.RED_TEAM_ONLINE, 1000, () -> TAB.getInstance().getPlatform().getRedTeamPlayerCount());
-        manager.registerServerPlaceholder(TabConstants.Placeholder.BLUE_TEAM_ONLINE, 1000, () -> TAB.getInstance().getPlatform().getBlueTeamPlayerCount());
+        manager.registerServerPlaceholder(TabConstants.Placeholder.RED_TEAM_ONLINE, 1000, () -> {
+            if(TAB.getInstance() instanceof TAB) return TAB.getInstance().getPlatform().getRedTeamPlayerCount();
+            return 0;
+        });
+        manager.registerServerPlaceholder(TabConstants.Placeholder.BLUE_TEAM_ONLINE, 1000, () -> {
+            if(TAB.getInstance() instanceof TAB) return TAB.getInstance().getPlatform().getBlueTeamPlayerCount();
+            return 0;
+        });
+        manager.registerPlayerPlaceholder(TabConstants.Placeholder.PLAYER_KILL_COUNT, 2000, p -> ((TabPlayer)p).getKillCount());
         // RandomTeamFights end
         manager.registerServerPlaceholder(TabConstants.Placeholder.STAFF_ONLINE, 2000, () -> Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> all.hasPermission(TabConstants.Permission.STAFF) && !all.isVanished()).count());
         manager.registerServerPlaceholder(TabConstants.Placeholder.NON_STAFF_ONLINE, 2000, () -> Arrays.stream(TAB.getInstance().getOnlinePlayers()).filter(all -> !all.hasPermission(TabConstants.Permission.STAFF) && !all.isVanished()).count());

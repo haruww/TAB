@@ -1,5 +1,6 @@
 dependencies {
     implementation(projects.shared)
+    implementation("com.github.puregero:multilib:1.1.8")
     implementation("org.bstats:bstats-bukkit:3.0.1")
     compileOnly("org.purpurmc.purpur:purpur-api:1.16.5-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.2")

@@ -1,5 +1,6 @@
 package me.neznamy.tab.platforms.bukkit;
 
+import com.github.puregero.multilib.MultiLib;
 import me.neznamy.tab.platforms.bukkit.platform.BukkitPlatform;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.platform.EventListener;
@@ -22,16 +23,19 @@ public class BukkitEventListener extends EventListener<Player> implements Listen
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onQuit(PlayerQuitEvent e) {
         quit(e.getPlayer().getUniqueId());
+        MultiLib.notify("tab-player-quit", e.getPlayer().getUniqueId().toString());
     }
 
     @EventHandler(priority = EventPriority.LOW)
     public void onJoin(PlayerJoinEvent e) {
         join(e.getPlayer());
+        MultiLib.notify("tab-player-join", e.getPlayer().getUniqueId() + ":" + 0);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onWorldChange(PlayerChangedWorldEvent e) {
         worldChange(e.getPlayer().getUniqueId(), e.getPlayer().getWorld().getName());
+        MultiLib.notify("tab-player-world-change", e.getPlayer().getUniqueId() + ":" + e.getPlayer().getWorld().getName());
     }
 
     @EventHandler

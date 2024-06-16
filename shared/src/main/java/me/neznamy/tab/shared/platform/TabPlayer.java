@@ -346,4 +346,6 @@ public abstract class TabPlayer implements me.neznamy.tab.api.TabPlayer {
      * @return  Server platform
      */
     public abstract Platform getPlatform();
+
+    public abstract int getKillCount();
 }

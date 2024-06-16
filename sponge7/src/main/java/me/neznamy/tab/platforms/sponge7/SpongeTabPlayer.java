@@ -93,6 +93,11 @@ public class SpongeTabPlayer extends BackendTabPlayer {
     }
 
     @Override
+    public int getKillCount() {
+        return 0;
+    }
+
+    @Override
     public boolean isVanished() {
         return getPlayer().get(Keys.VANISH).orElse(false);
     }

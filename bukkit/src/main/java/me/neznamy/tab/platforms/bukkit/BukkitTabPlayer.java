@@ -20,6 +20,7 @@ import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
 import me.neznamy.tab.shared.platform.Scoreboard;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.backend.BackendTabPlayer;
+import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.potion.PotionEffectType;
@@ -158,5 +159,10 @@ public class BukkitTabPlayer extends BackendTabPlayer {
     @NotNull
     public String getDisplayName() {
         return getPlayer().getDisplayName();
+    }
+
+    @Override
+    public int getKillCount() {
+        return getPlayer().getStatistic(Statistic.PLAYER_KILLS);
     }
 }

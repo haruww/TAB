@@ -11,6 +11,7 @@ dependencyResolutionManagement {
         maven("https://repo.spongepowered.org/repository/maven-public/") // Sponge
         maven("https://jitpack.io") // PremiumVanish, Vault, YamlAssist
         maven("https://repo.md-5.net/content/groups/public/") // LibsDisguises
+        maven("https://repo.clojars.org/") // MultiLib
     }
 }
 

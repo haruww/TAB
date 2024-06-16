@@ -1,5 +1,6 @@
 package me.neznamy.tab.platforms.bukkit.platform;
 
+import com.github.puregero.multilib.MultiLib;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -259,14 +260,10 @@ public class BukkitPlatform implements BackendPlatform {
     @Override
     public int getRedTeamPlayerCount() {
         int count = 0;
-        for (World world : Bukkit.getWorlds()) {
-            for (Player p : world.getPlayers()) {
-                Scoreboard scoreboard = p.getScoreboard();
-                String playerName = p.getName();
-                if (scoreboard.getEntryTeam(playerName) != null && scoreboard.getEntryTeam(playerName).getName().equalsIgnoreCase("red")) {
-                    count++;
-                }
-            }
+        for(TabPlayer player : TAB.getInstance().getOnlinePlayers())
+        {
+            if(LuckPermsHook.getInstance().getPrimaryGroup(player).equalsIgnoreCase("redgroup")
+                    || LuckPermsHook.getInstance().getPrimaryGroup(player).equalsIgnoreCase("redking")) count++;
         }
         return count;
     }
@@ -274,14 +271,10 @@ public class BukkitPlatform implements BackendPlatform {
     @Override
     public int getBlueTeamPlayerCount() {
         int count = 0;
-        for (World world : Bukkit.getWorlds()) {
-            for (Player p : world.getPlayers()) {
-                Scoreboard scoreboard = p.getScoreboard();
-                String playerName = p.getName();
-                if (scoreboard.getEntryTeam(playerName) != null && scoreboard.getEntryTeam(playerName).getName().equalsIgnoreCase("blue")) {
-                    count++;
-                }
-            }
+        for(TabPlayer player : TAB.getInstance().getOnlinePlayers())
+        {
+            if(LuckPermsHook.getInstance().getPrimaryGroup(player).equalsIgnoreCase("bluegroup")||
+                    LuckPermsHook.getInstance().getPrimaryGroup(player).equalsIgnoreCase("blueking")) count++;
         }
         return count;
     }

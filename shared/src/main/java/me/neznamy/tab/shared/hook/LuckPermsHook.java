@@ -26,7 +26,7 @@ public class LuckPermsHook {
 
     /** Function retrieving group of player from LuckPerms */
     @Getter private final Function<TabPlayer, String> groupFunction = p -> {
-        User user = LuckPermsProvider.get().getUserManager().getUser(p.getUniqueId());
+        User user = LuckPermsProvider.get().getUserManager().loadUser(p.getUniqueId(), p.getName()).join();
         if (user == null) return TabConstants.NO_GROUP;
         return user.getPrimaryGroup();
     };
@@ -64,7 +64,7 @@ public class LuckPermsHook {
      * @return  Player's metadata value
      */
     private String getValue(@NonNull TabPlayer p, boolean prefix) {
-        User user = LuckPermsProvider.get().getUserManager().getUser(p.getUniqueId());
+        User user = LuckPermsProvider.get().getUserManager().loadUser(p.getUniqueId(), p.getName()).join();
         if (user == null) return "";
         Optional<QueryOptions> options = LuckPermsProvider.get().getContextManager().getQueryOptions(user);
         if (!options.isPresent()) return "";
@@ -76,5 +76,11 @@ public class LuckPermsHook {
             value = data.getSuffix();
         }
         return value == null ? "" : value;
+    }
+
+    public String getPrimaryGroup(@NonNull TabPlayer p) {
+        User user = LuckPermsProvider.get().getUserManager().loadUser(p.getUniqueId(), p.getName()).join();
+        if (user == null) return "";
+        return user.getPrimaryGroup();
     }
 }

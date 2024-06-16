@@ -1,14 +1,21 @@
 package me.neznamy.tab.platforms.bukkit;
 
+import com.github.puregero.multilib.MultiLib;
+import me.neznamy.tab.api.TabAPI;
 import me.neznamy.tab.platforms.bukkit.nms.NMSStorage;
 import me.neznamy.tab.platforms.bukkit.platform.BukkitPlatform;
 import me.neznamy.tab.platforms.bukkit.platform.FoliaPlatform;
 import me.neznamy.tab.shared.ProtocolVersion;
+import me.neznamy.tab.shared.TabConstants;
 import me.neznamy.tab.shared.chat.EnumChatFormat;
 import me.neznamy.tab.shared.TAB;
 import me.neznamy.tab.shared.util.ReflectionUtils;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
+
+import java.util.UUID;
 
 /**
  * Main class for Bukkit.
@@ -23,7 +30,35 @@ public class BukkitTAB extends JavaPlugin {
         }
         TAB.create(ReflectionUtils.classExists("io.papermc.paper.threadedregions.RegionizedServer") ?
                 new FoliaPlatform(this) : new BukkitPlatform(this));
+
+        setupMultiLibChannels();
     }
+
+    private void setupMultiLibChannels() {
+        MultiLib.onString(this, "tab-player-join", (data) -> {
+            String[] parts = data.split(":");
+            TAB.getInstance().getCPUManager().runTaskLater(300, "Tablist name formatting", TabConstants.CpuUsageCategory.PLAYER_JOIN, () -> {
+                Player p = getPlayerMultiLib(UUID.fromString(parts[0]));
+                TAB.getInstance().getFeatureManager().onJoin(new BukkitTabPlayer((BukkitPlatform) TAB.getInstance().getPlatform(), p));
+            });
+        });
+        MultiLib.onString(this, "tab-player-quit", (data) -> {
+            TAB.getInstance().getCPUManager().runTask(() -> TAB.getInstance().getFeatureManager().onQuit(TAB.getInstance().getPlayer(UUID.fromString(data))));
+        });
+        MultiLib.onString(this, "tab-player-world-change", (data) -> {
+            String[] parts = data.split(":");
+            TAB.getInstance().getCPUManager().runTask(() ->
+                    TAB.getInstance().getFeatureManager().onWorldChange(UUID.fromString(parts[0]), parts[1]));
+        });
+    }
+
+    private Player getPlayerMultiLib(UUID uuid) {
+        for (Player all : MultiLib.getAllOnlinePlayers()) {
+            if (all.getUniqueId().equals(uuid)) return all;
+        }
+        return null;
+    }
+
 
     @Override
     public void onDisable() {

@@ -253,6 +253,7 @@ public class TabConstants {
         public static final String WORLD = "%world%";
         public static final String WORLD_ONLINE = "%worldonline%";
         public static final String SERVER = "%server%";
+        public static final String TEAM = "%team%"; // RandomTeamFight
         public static final String SERVER_ONLINE = "%serveronline%";
         public static final String PLAYER = "%player%";
         public static final String TIME = "%time%";
@@ -270,6 +271,7 @@ public class TabConstants {
         // RandomTeamFights start
         public static final String RED_TEAM_ONLINE = "%redteamonline%";
         public static final String BLUE_TEAM_ONLINE = "%blueteamonline%";
+        public static final String PLAYER_KILL_COUNT = "%playerkillcount%";
         // RandomTeamFights end
         public static final String LUCKPERMS_PREFIX = "%luckperms-prefix%";
         public static final String LUCKPERMS_SUFFIX = "%luckperms-suffix%";

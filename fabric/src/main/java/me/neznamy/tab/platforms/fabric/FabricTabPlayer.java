@@ -85,6 +85,11 @@ public class FabricTabPlayer extends BackendTabPlayer {
     }
 
     @Override
+    public int getKillCount() {
+        return 0;
+    }
+
+    @Override
     public boolean isVanished() {
         return false;
     }

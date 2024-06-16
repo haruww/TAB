@@ -86,6 +86,11 @@ public class VelocityTabPlayer extends ProxyTabPlayer {
     }
 
     @Override
+    public int getKillCount() {
+        return 0;
+    }
+
+    @Override
     public void sendPluginMessage(byte[] message) {
         try {
             getPlayer().getCurrentServer().ifPresentOrElse(
